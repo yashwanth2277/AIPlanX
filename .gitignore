@@ -21,3 +21,6 @@ htmlcov/
 # Generated backups
 final_report*.bak
 final_report_before_*.json
+# Generated team workflow artifacts
+team_workflow.json
+team_workflow.mmd
