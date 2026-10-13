@@ -1,0 +1,28 @@
+{
+  "project_name": "Student Attendance Management System",
+  "minimum_skill_match": 0.5,
+  "recommendations": [
+    {
+      "task_id": 9,
+      "task_title": "Docker Containerization & Cloud Deployment",
+      "status": "additional_employee_required",
+      "reason": "No employee meets the minimum 50% skill-match threshold.",
+      "recommended_role": "DevOps / Cloud Engineer",
+      "required_skills": [
+        "Docker",
+        "Deployment",
+        "AWS"
+      ],
+      "estimated_hours": 12.0
+    },
+    {
+      "task_id": 10,
+      "task_title": "Documentation & Knowledge Transfer",
+      "status": "dependency_blocked",
+      "reason": "Waiting for unscheduled prerequisite tasks: [9]",
+      "recommended_role": null,
+      "required_skills": [],
+      "estimated_hours": 8.0
+    }
+  ]
+}

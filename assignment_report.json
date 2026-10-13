@@ -1,0 +1,261 @@
+{
+  "project_name": "Student Attendance Management System",
+  "assignments": [
+    {
+      "task_id": 1,
+      "task_title": "Project Setup & Repository Initialization",
+      "employee_id": "EMP004",
+      "employee_name": "Sneha",
+      "match_score": 0.642,
+      "assignment_reason": "Matched skills: git, github. Missing skills: project setup. Skill match: 67%. Allocated 8.0 hours across weeks 1-1."
+    },
+    {
+      "task_id": 2,
+      "task_title": "Database Design & Schema Creation",
+      "employee_id": "EMP002",
+      "employee_name": "Priya",
+      "match_score": 0.836,
+      "assignment_reason": "Matched skills: database design, postgresql, sql. Missing skills: None. Skill match: 100%. Allocated 12.0 hours across weeks 1-1."
+    },
+    {
+      "task_id": 3,
+      "task_title": "Backend API Development - Core Endpoints",
+      "employee_id": "EMP001",
+      "employee_name": "Rahul",
+      "match_score": 0.592,
+      "assignment_reason": "Matched skills: fastapi, python. Missing skills: api design. Skill match: 67%. Allocated 30.0 hours across weeks 1-2."
+    },
+    {
+      "task_id": 5,
+      "task_title": "Frontend UI Development - Dashboard & Attendance Views",
+      "employee_id": "EMP004",
+      "employee_name": "Sneha",
+      "match_score": 0.859,
+      "assignment_reason": "Matched skills: css, html, javascript, react. Missing skills: None. Skill match: 100%. Allocated 25.0 hours across weeks 1-2."
+    },
+    {
+      "task_id": 4,
+      "task_title": "Authentication & Authorization Implementation",
+      "employee_id": "EMP001",
+      "employee_name": "Rahul",
+      "match_score": 0.592,
+      "assignment_reason": "Matched skills: fastapi, python. Missing skills: security. Skill match: 67%. Allocated 20.0 hours across weeks 2-2."
+    },
+    {
+      "task_id": 11,
+      "task_title": "Backend Integration Support",
+      "employee_id": "EMP001",
+      "employee_name": "Rahul",
+      "match_score": 0.809,
+      "assignment_reason": "Matched skills: fastapi, python. Missing skills: None. Skill match: 100%. Allocated 8.0 hours across weeks 2-2."
+    },
+    {
+      "task_id": 6,
+      "task_title": "Frontend Integration with Backend API",
+      "employee_id": "EMP004",
+      "employee_name": "Sneha",
+      "match_score": 0.859,
+      "assignment_reason": "Matched skills: javascript, react. Missing skills: None. Skill match: 100%. Allocated 10.0 hours across weeks 2-2."
+    },
+    {
+      "task_id": 7,
+      "task_title": "Testing - Unit & Integration Tests",
+      "employee_id": "EMP001",
+      "employee_name": "Rahul",
+      "match_score": 0.809,
+      "assignment_reason": "Matched skills: pytest, python, testing. Missing skills: None. Skill match: 100%. Allocated 22.0 hours across weeks 2-3."
+    },
+    {
+      "task_id": 8,
+      "task_title": "CI/CD Pipeline Setup",
+      "employee_id": "EMP001",
+      "employee_name": "Rahul",
+      "match_score": 0.592,
+      "assignment_reason": "Matched skills: docker, github. Missing skills: ci/cd. Skill match: 67%. Allocated 15.0 hours across weeks 3-3."
+    }
+  ],
+  "unassigned_tasks": [
+    {
+      "task_id": 9,
+      "task_title": "Docker Containerization & Cloud Deployment",
+      "reason": "No employee meets the skill-match threshold and has schedulable weekly capacity."
+    },
+    {
+      "task_id": 10,
+      "task_title": "Documentation & Knowledge Transfer",
+      "reason": "Blocked by unscheduled prerequisite(s): [9]."
+    }
+  ],
+  "work_schedule": {
+    "scheduled_tasks": [
+      {
+        "task_id": 1,
+        "task_title": "Project Setup & Repository Initialization",
+        "employee_id": "EMP004",
+        "employee_name": "Sneha",
+        "total_estimated_hours": 8.0,
+        "weekly_allocations": [
+          {
+            "week": 1,
+            "allocated_hours": 8.0
+          }
+        ],
+        "start_week": 1,
+        "completion_week": 1,
+        "assignment_reason": "Matched skills: git, github. Missing skills: project setup. Skill match: 67%. Scheduled over 1 week(s)."
+      },
+      {
+        "task_id": 2,
+        "task_title": "Database Design & Schema Creation",
+        "employee_id": "EMP002",
+        "employee_name": "Priya",
+        "total_estimated_hours": 12.0,
+        "weekly_allocations": [
+          {
+            "week": 1,
+            "allocated_hours": 12.0
+          }
+        ],
+        "start_week": 1,
+        "completion_week": 1,
+        "assignment_reason": "Matched skills: database design, postgresql, sql. Missing skills: None. Skill match: 100%. Scheduled over 1 week(s)."
+      },
+      {
+        "task_id": 3,
+        "task_title": "Backend API Development - Core Endpoints",
+        "employee_id": "EMP001",
+        "employee_name": "Rahul",
+        "total_estimated_hours": 30.0,
+        "weekly_allocations": [
+          {
+            "week": 1,
+            "allocated_hours": 24.0
+          },
+          {
+            "week": 2,
+            "allocated_hours": 6.0
+          }
+        ],
+        "start_week": 1,
+        "completion_week": 2,
+        "assignment_reason": "Matched skills: fastapi, python. Missing skills: api design. Skill match: 67%. Scheduled over 2 week(s)."
+      },
+      {
+        "task_id": 5,
+        "task_title": "Frontend UI Development - Dashboard & Attendance Views",
+        "employee_id": "EMP004",
+        "employee_name": "Sneha",
+        "total_estimated_hours": 25.0,
+        "weekly_allocations": [
+          {
+            "week": 1,
+            "allocated_hours": 24.0
+          },
+          {
+            "week": 2,
+            "allocated_hours": 1.0
+          }
+        ],
+        "start_week": 1,
+        "completion_week": 2,
+        "assignment_reason": "Matched skills: css, html, javascript, react. Missing skills: None. Skill match: 100%. Scheduled over 2 week(s)."
+      },
+      {
+        "task_id": 4,
+        "task_title": "Authentication & Authorization Implementation",
+        "employee_id": "EMP001",
+        "employee_name": "Rahul",
+        "total_estimated_hours": 20.0,
+        "weekly_allocations": [
+          {
+            "week": 2,
+            "allocated_hours": 20.0
+          }
+        ],
+        "start_week": 2,
+        "completion_week": 2,
+        "assignment_reason": "Matched skills: fastapi, python. Missing skills: security. Skill match: 67%. Scheduled over 1 week(s)."
+      },
+      {
+        "task_id": 11,
+        "task_title": "Backend Integration Support",
+        "employee_id": "EMP001",
+        "employee_name": "Rahul",
+        "total_estimated_hours": 8.0,
+        "weekly_allocations": [
+          {
+            "week": 2,
+            "allocated_hours": 8.0
+          }
+        ],
+        "start_week": 2,
+        "completion_week": 2,
+        "assignment_reason": "Matched skills: fastapi, python. Missing skills: None. Skill match: 100%. Scheduled over 1 week(s)."
+      },
+      {
+        "task_id": 6,
+        "task_title": "Frontend Integration with Backend API",
+        "employee_id": "EMP004",
+        "employee_name": "Sneha",
+        "total_estimated_hours": 10.0,
+        "weekly_allocations": [
+          {
+            "week": 2,
+            "allocated_hours": 10.0
+          }
+        ],
+        "start_week": 2,
+        "completion_week": 2,
+        "assignment_reason": "Matched skills: javascript, react. Missing skills: None. Skill match: 100%. Scheduled over 1 week(s)."
+      },
+      {
+        "task_id": 7,
+        "task_title": "Testing - Unit & Integration Tests",
+        "employee_id": "EMP001",
+        "employee_name": "Rahul",
+        "total_estimated_hours": 22.0,
+        "weekly_allocations": [
+          {
+            "week": 2,
+            "allocated_hours": 6.0
+          },
+          {
+            "week": 3,
+            "allocated_hours": 16.0
+          }
+        ],
+        "start_week": 2,
+        "completion_week": 3,
+        "assignment_reason": "Matched skills: pytest, python, testing. Missing skills: None. Skill match: 100%. Scheduled over 2 week(s)."
+      },
+      {
+        "task_id": 8,
+        "task_title": "CI/CD Pipeline Setup",
+        "employee_id": "EMP001",
+        "employee_name": "Rahul",
+        "total_estimated_hours": 15.0,
+        "weekly_allocations": [
+          {
+            "week": 3,
+            "allocated_hours": 15.0
+          }
+        ],
+        "start_week": 3,
+        "completion_week": 3,
+        "assignment_reason": "Matched skills: docker, github. Missing skills: ci/cd. Skill match: 67%. Scheduled over 1 week(s)."
+      }
+    ],
+    "unscheduled_tasks": [
+      {
+        "task_id": 9,
+        "task_title": "Docker Containerization & Cloud Deployment",
+        "reason": "No employee meets the skill-match threshold and has schedulable weekly capacity."
+      },
+      {
+        "task_id": 10,
+        "task_title": "Documentation & Knowledge Transfer",
+        "reason": "Blocked by unscheduled prerequisite(s): [9]."
+      }
+    ]
+  }
+}

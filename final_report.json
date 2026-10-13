@@ -1,0 +1,1006 @@
+{
+  "project_plan": {
+    "project_name": "College Issue Reporting and Management System",
+    "project_summary": "A web application enabling students to report campus issues, track status, vote on reports, and allowing administrators to manage, assign, and resolve these issues through a unified dashboard.",
+    "total_estimated_hours": 172.0,
+    "tasks": [
+      {
+        "task_id": 1,
+        "title": "Project Setup & Planning",
+        "description": "Initialize Git repository, configure project structure, set up CI pipeline and documentation framework.",
+        "required_skills": [
+          "Git",
+          "GitHub",
+          "Project Setup",
+          "CI/CD"
+        ],
+        "estimated_hours": 12.0,
+        "priority": "High",
+        "dependencies": []
+      },
+      {
+        "task_id": 2,
+        "title": "Database Design",
+        "description": "Design relational schema for users, issues, votes, assignments, and status tracking using PostgreSQL.",
+        "required_skills": [
+          "SQL",
+          "PostgreSQL",
+          "Database Design"
+        ],
+        "estimated_hours": 16.0,
+        "priority": "High",
+        "dependencies": [
+          1
+        ]
+      },
+      {
+        "task_id": 3,
+        "title": "Backend API Development - Core Endpoints",
+        "description": "Implement FastAPI services for issue creation, retrieval, voting, status updates, and admin assignment logic.",
+        "required_skills": [
+          "Python",
+          "FastAPI",
+          "API Design",
+          "SQL"
+        ],
+        "estimated_hours": 24.0,
+        "priority": "High",
+        "dependencies": [
+          2
+        ]
+      },
+      {
+        "task_id": 4,
+        "title": "Frontend UI Mockup & Component Library",
+        "description": "Set up React project, create reusable UI components and pages with mock data for issue reporting and tracking.",
+        "required_skills": [
+          "React",
+          "JavaScript",
+          "HTML",
+          "CSS"
+        ],
+        "estimated_hours": 20.0,
+        "priority": "Medium",
+        "dependencies": [
+          1
+        ]
+      },
+      {
+        "task_id": 5,
+        "title": "Frontend Integration with API",
+        "description": "Connect React components to backend FastAPI endpoints, implement authentication, voting, and real‑time status updates.",
+        "required_skills": [
+          "React",
+          "JavaScript",
+          "API Design",
+          "Testing"
+        ],
+        "estimated_hours": 30.0,
+        "priority": "High",
+        "dependencies": [
+          3,
+          4
+        ]
+      },
+      {
+        "task_id": 6,
+        "title": "Frontend Integration with Backend API",
+        "description": "Connect React UI components to prepared API endpoints. Handle data fetching, error handling, and UI state.",
+        "required_skills": [
+          "React",
+          "JavaScript"
+        ],
+        "estimated_hours": 10.0,
+        "priority": "High",
+        "dependencies": [
+          5,
+          11
+        ]
+      },
+      {
+        "task_id": 11,
+        "title": "Backend Integration Support",
+        "description": "Prepare and verify FastAPI endpoint contracts and consistent responses for frontend integration.",
+        "required_skills": [
+          "Python",
+          "FastAPI"
+        ],
+        "estimated_hours": 8.0,
+        "priority": "Medium",
+        "dependencies": [
+          3,
+          4
+        ]
+      },
+      {
+        "task_id": 7,
+        "title": "Automated Testing",
+        "description": "Create unit and integration tests for backend services and frontend components, set up test runners and coverage reports.",
+        "required_skills": [
+          "Pytest",
+          "Testing",
+          "Docker"
+        ],
+        "estimated_hours": 22.0,
+        "priority": "Medium",
+        "dependencies": [
+          3,
+          5,
+          6,
+          11
+        ]
+      },
+      {
+        "task_id": 8,
+        "title": "Deployment & Containerization",
+        "description": "Dockerize backend and frontend, configure CI/CD pipelines for automated builds and deployment to cloud environment.",
+        "required_skills": [
+          "Docker",
+          "CI/CD",
+          "Deployment"
+        ],
+        "estimated_hours": 18.0,
+        "priority": "Medium",
+        "dependencies": [
+          7
+        ]
+      },
+      {
+        "task_id": 9,
+        "title": "Documentation & User Guide",
+        "description": "Write comprehensive project documentation, API reference, and end‑user guide for reporting and admin workflows.",
+        "required_skills": [
+          "Documentation",
+          "Project Setup",
+          "Markdown"
+        ],
+        "estimated_hours": 12.0,
+        "priority": "Low",
+        "dependencies": [
+          5,
+          6
+        ]
+      }
+    ],
+    "risks": [
+      "Scope creep leading to additional feature requests",
+      "Delayed backend‑frontend integration due to mismatched API contracts",
+      "Insufficient testing causing production bugs",
+      "Deployment environment incompatibilities",
+      "Low user adoption affecting feedback"
+    ]
+  },
+  "task_breakdowns": [
+    {
+      "task_id": 1,
+      "task_title": "Project Setup & Planning",
+      "parent_estimated_hours": 12.0,
+      "subtasks": [
+        {
+          "subtask_id": 1,
+          "title": "Initialize Git repository and configure remote",
+          "description": "Create a new Git repository, add .gitignore, set up main branch, and push to the remote hosting service (e.g., GitHub or GitLab).",
+          "estimated_hours": 1.78
+        },
+        {
+          "subtask_id": 2,
+          "title": "Define project directory structure",
+          "description": "Create top‑level folders (src, tests, docs, scripts, config) and scaffold basic placeholder files to enforce a consistent layout.",
+          "estimated_hours": 2.67
+        },
+        {
+          "subtask_id": 3,
+          "title": "Set up continuous integration pipeline",
+          "description": "Configure a CI workflow (GitHub Actions, GitLab CI, or similar) to run linting, unit tests, and build checks on each push/PR.",
+          "estimated_hours": 3.56
+        },
+        {
+          "subtask_id": 4,
+          "title": "Create initial documentation framework",
+          "description": "Add a README template, CONTRIBUTING guide, and a docs folder with a basic MkDocs/Sphinx configuration.",
+          "estimated_hours": 2.22
+        },
+        {
+          "subtask_id": 5,
+          "title": "Establish coding standards and pre‑commit hooks",
+          "description": "Select linting/formatting tools (e.g., ESLint, Black), add configuration files, and install pre‑commit hooks to enforce standards automatically.",
+          "estimated_hours": 1.77
+        }
+      ]
+    },
+    {
+      "task_id": 2,
+      "task_title": "Database Design",
+      "parent_estimated_hours": 16.0,
+      "subtasks": [
+        {
+          "subtask_id": 1,
+          "title": "Gather Requirements and Define Entities",
+          "description": "Review project specifications to identify all required entities (users, issues, votes, assignments, status tracking) and their attributes. Document relationships and constraints.",
+          "estimated_hours": 2.8
+        },
+        {
+          "subtask_id": 2,
+          "title": "Create ER Diagram and Normalize Schema",
+          "description": "Draw an Entity‑Relationship diagram, apply normalization (up to 3NF) to eliminate redundancy, and decide primary/foreign keys for each table.",
+          "estimated_hours": 3.2
+        },
+        {
+          "subtask_id": 3,
+          "title": "Write PostgreSQL DDL Scripts",
+          "description": "Translate the normalized model into CREATE TABLE statements, including data types, constraints, indexes, and default values for timestamps.",
+          "estimated_hours": 4.0
+        },
+        {
+          "subtask_id": 4,
+          "title": "Implement Referential Integrity and Triggers",
+          "description": "Add foreign key constraints, ON DELETE/UPDATE actions, and write necessary triggers (e.g., for status change audit logs).",
+          "estimated_hours": 2.4
+        },
+        {
+          "subtask_id": 5,
+          "title": "Create Sample Data and Test Queries",
+          "description": "Populate tables with representative seed data and run SELECT/INSERT/UPDATE tests to verify relationships, indexing, and performance.",
+          "estimated_hours": 2.0
+        },
+        {
+          "subtask_id": 6,
+          "title": "Document Schema and Migration Plan",
+          "description": "Produce a concise schema documentation (tables, columns, relationships) and outline a migration strategy using tools like Flyway or Liquibase.",
+          "estimated_hours": 1.6
+        }
+      ]
+    },
+    {
+      "task_id": 3,
+      "task_title": "Backend API Development - Core Endpoints",
+      "parent_estimated_hours": 24.0,
+      "subtasks": [
+        {
+          "subtask_id": 1,
+          "title": "Design API schema and data models",
+          "description": "Define Pydantic models for Issue, Vote, Status, and AdminAssignment. Create SQLAlchemy ORM models and migration scripts. Document request/response schemas.",
+          "estimated_hours": 4.0
+        },
+        {
+          "subtask_id": 2,
+          "title": "Implement issue creation endpoint",
+          "description": "Build POST /issues endpoint with validation, authentication, and database insertion. Return created issue with ID and timestamps.",
+          "estimated_hours": 3.11
+        },
+        {
+          "subtask_id": 3,
+          "title": "Implement issue retrieval endpoints",
+          "description": "Create GET /issues (list with filters) and GET /issues/{id} endpoints. Include pagination, sorting, and eager loading of related votes and status.",
+          "estimated_hours": 3.56
+        },
+        {
+          "subtask_id": 4,
+          "title": "Implement voting and status update logic",
+          "description": "Add POST /issues/{id}/vote and PATCH /issues/{id}/status endpoints. Enforce business rules (one vote per user, valid status transitions) and emit appropriate responses.",
+          "estimated_hours": 4.44
+        },
+        {
+          "subtask_id": 5,
+          "title": "Implement admin assignment endpoint",
+          "description": "Create POST /issues/{id}/assign-admin endpoint. Validate admin role, update assignment field, and send notification hook.",
+          "estimated_hours": 2.67
+        },
+        {
+          "subtask_id": 6,
+          "title": "Write unit and integration tests",
+          "description": "Develop pytest suites covering all core endpoints, edge cases, and error handling. Use TestClient and a temporary SQLite DB.",
+          "estimated_hours": 4.0
+        },
+        {
+          "subtask_id": 7,
+          "title": "Documentation and OpenAPI refinement",
+          "description": "Add detailed docstrings, update FastAPI automatic OpenAPI spec, and generate README usage examples for each endpoint.",
+          "estimated_hours": 2.22
+        }
+      ]
+    },
+    {
+      "task_id": 4,
+      "task_title": "Frontend UI Mockup & Component Library",
+      "parent_estimated_hours": 20.0,
+      "subtasks": [
+        {
+          "subtask_id": 1,
+          "title": "Initialize React Project and Tooling",
+          "description": "Set up a new React application using Create React App or Vite, configure TypeScript, ESLint, Prettier, and install necessary UI libraries (e.g., styled-components or Tailwind). Commit initial project structure to version control.",
+          "estimated_hours": 3.08
+        },
+        {
+          "subtask_id": 2,
+          "title": "Design Component Architecture & Style Guide",
+          "description": "Define a component hierarchy (atoms, molecules, organisms) and create a style guide covering colors, typography, spacing, and interaction states. Document the guidelines in a markdown file or Storybook.",
+          "estimated_hours": 2.31
+        },
+        {
+          "subtask_id": 3,
+          "title": "Build Core Reusable UI Components",
+          "description": "Develop reusable components such as Button, Input, Select, Modal, Card, and Notification. Ensure each component supports props for customization and includes basic unit tests.",
+          "estimated_hours": 4.62
+        },
+        {
+          "subtask_id": 4,
+          "title": "Create Issue Reporting Page Mockup",
+          "description": "Assemble the core components to build a mock Issue Reporting page with fields for title, description, priority, and attachment upload. Populate the page with static mock data and ensure responsive layout.",
+          "estimated_hours": 3.85
+        },
+        {
+          "subtask_id": 5,
+          "title": "Create Issue Tracking Dashboard Mockup",
+          "description": "Construct a mock Issue Tracking dashboard using tables, filters, and status badges. Use mock data to demonstrate sorting, pagination, and status updates.",
+          "estimated_hours": 3.85
+        },
+        {
+          "subtask_id": 6,
+          "title": "Integrate Components into Storybook",
+          "description": "Add all created components and page mockups to Storybook for visual testing and documentation. Verify that each story reflects different states and variants.",
+          "estimated_hours": 2.29
+        }
+      ]
+    },
+    {
+      "task_id": 5,
+      "task_title": "Frontend Integration with API",
+      "parent_estimated_hours": 30.0,
+      "subtasks": [
+        {
+          "subtask_id": 1,
+          "title": "Set up API service layer",
+          "description": "Create a reusable API client using Axios or Fetch, configure base URL, error handling, and token injection for authentication.",
+          "estimated_hours": 4.8
+        },
+        {
+          "subtask_id": 2,
+          "title": "Implement authentication flow",
+          "description": "Integrate login, logout, and token refresh UI components with FastAPI auth endpoints; store JWT securely and protect routes.",
+          "estimated_hours": 7.2
+        },
+        {
+          "subtask_id": 3,
+          "title": "Connect voting component to backend",
+          "description": "Wire up the React voting UI to POST/GET voting endpoints, handle optimistic UI updates, and display vote counts.",
+          "estimated_hours": 6.0
+        },
+        {
+          "subtask_id": 4,
+          "title": "Add real‑time status updates",
+          "description": "Integrate WebSocket (or Server‑Sent Events) client to receive live status changes from FastAPI and update the UI accordingly.",
+          "estimated_hours": 8.4
+        },
+        {
+          "subtask_id": 5,
+          "title": "Error handling & user feedback",
+          "description": "Implement global error handling, loading spinners, and toast notifications for API failures and success messages.",
+          "estimated_hours": 3.6
+        }
+      ]
+    },
+    {
+      "task_id": 6,
+      "task_title": "Frontend Integration with Backend API",
+      "parent_estimated_hours": 10.0,
+      "subtasks": [
+        {
+          "subtask_id": 1,
+          "title": "Connect frontend API client",
+          "description": "Configure API calls and request handling for the required endpoints.",
+          "estimated_hours": 3.0
+        },
+        {
+          "subtask_id": 2,
+          "title": "Implement response and error handling",
+          "description": "Handle API responses, loading states, and errors in React components.",
+          "estimated_hours": 4.0
+        },
+        {
+          "subtask_id": 3,
+          "title": "Verify frontend integration",
+          "description": "Test the integrated UI flows against the prepared backend endpoints.",
+          "estimated_hours": 3.0
+        }
+      ]
+    },
+    {
+      "task_id": 11,
+      "task_title": "Backend Integration Support",
+      "parent_estimated_hours": 8.0,
+      "subtasks": [
+        {
+          "subtask_id": 1,
+          "title": "Verify API contracts",
+          "description": "Confirm request fields, response formats, and endpoint behavior.",
+          "estimated_hours": 3.0
+        },
+        {
+          "subtask_id": 2,
+          "title": "Standardize backend responses",
+          "description": "Check validation and consistent success and error responses.",
+          "estimated_hours": 3.0
+        },
+        {
+          "subtask_id": 3,
+          "title": "Verify integration readiness",
+          "description": "Run endpoint checks and document integration requirements.",
+          "estimated_hours": 2.0
+        }
+      ]
+    },
+    {
+      "task_id": 7,
+      "task_title": "Automated Testing",
+      "parent_estimated_hours": 22.0,
+      "subtasks": [
+        {
+          "subtask_id": 1,
+          "title": "Define testing strategy and select frameworks",
+          "description": "Document the overall testing approach, decide on unit testing frameworks (e.g., Jest for frontend, pytest for backend) and integration testing tools (e.g., Cypress, SuperTest). Create a shared configuration repository and set up CI integration guidelines.",
+          "estimated_hours": 2.93
+        },
+        {
+          "subtask_id": 2,
+          "title": "Implement backend unit tests",
+          "description": "Write unit tests for all backend service functions, covering business logic, data validation, and error handling. Use mocking for external dependencies and achieve at least 70% code coverage.",
+          "estimated_hours": 5.87
+        },
+        {
+          "subtask_id": 3,
+          "title": "Implement frontend component tests",
+          "description": "Create unit tests for React/Vue components using the chosen framework. Test props handling, state changes, and rendering outcomes. Include snapshot tests where appropriate.",
+          "estimated_hours": 4.4
+        },
+        {
+          "subtask_id": 4,
+          "title": "Set up integration/end‑to‑end test suite",
+          "description": "Configure integration tests that exercise API endpoints and UI flows together. Use tools like Cypress or Playwright to simulate user interactions and verify full stack behavior.",
+          "estimated_hours": 5.13
+        },
+        {
+          "subtask_id": 5,
+          "title": "Configure test runners and coverage reporting",
+          "description": "Integrate test runners into the build pipeline, generate coverage reports (e.g., Istanbul/Codecov), and enforce minimum coverage thresholds in CI.",
+          "estimated_hours": 2.2
+        },
+        {
+          "subtask_id": 6,
+          "title": "Document testing guidelines and onboarding",
+          "description": "Write concise documentation on how to run tests locally, interpret coverage reports, and add new tests. Include troubleshooting tips and a checklist for code reviews.",
+          "estimated_hours": 1.47
+        }
+      ]
+    },
+    {
+      "task_id": 8,
+      "task_title": "Deployment & Containerization",
+      "parent_estimated_hours": 18.0,
+      "subtasks": [
+        {
+          "subtask_id": 1,
+          "title": "Create Dockerfiles for Backend and Frontend",
+          "description": "Write optimized Dockerfiles for the backend (including runtime, dependencies, and environment variables) and the frontend (build stage and production server). Test image builds locally.",
+          "estimated_hours": 3.27
+        },
+        {
+          "subtask_id": 2,
+          "title": "Set Up Docker Compose for Local Development",
+          "description": "Define a docker-compose.yml that orchestrates backend, frontend, and any supporting services (e.g., database, cache). Verify multi‑container startup and inter‑service networking.",
+          "estimated_hours": 2.45
+        },
+        {
+          "subtask_id": 3,
+          "title": "Configure CI Pipeline for Image Build & Test",
+          "description": "Add CI steps (GitHub Actions, GitLab CI, etc.) to build Docker images on each push, run unit/integration tests inside containers, and push successful images to a container registry.",
+          "estimated_hours": 4.09
+        },
+        {
+          "subtask_id": 4,
+          "title": "Create CD Pipeline for Automated Deployment",
+          "description": "Implement CD workflow that pulls images from the registry, applies infrastructure-as-code (e.g., Terraform or CloudFormation), and deploys to the target cloud environment (AWS/EKS, GCP/GKE, or Azure AKS). Include health checks and rollback strategy.",
+          "estimated_hours": 4.91
+        },
+        {
+          "subtask_id": 5,
+          "title": "Configure Environment Variables & Secrets Management",
+          "description": "Set up secure handling of environment-specific variables and secrets (using cloud secret manager or CI secret stores) and ensure they are injected into containers at runtime.",
+          "estimated_hours": 1.64
+        },
+        {
+          "subtask_id": 6,
+          "title": "Documentation & Knowledge Transfer",
+          "description": "Document Dockerfile rationale, compose configuration, CI/CD pipeline definitions, and deployment steps. Provide a quick‑start guide for developers and ops teams.",
+          "estimated_hours": 1.64
+        }
+      ]
+    },
+    {
+      "task_id": 9,
+      "task_title": "Documentation & User Guide",
+      "parent_estimated_hours": 12.0,
+      "subtasks": [
+        {
+          "subtask_id": 1,
+          "title": "Outline Documentation Structure",
+          "description": "Create a detailed outline covering project overview, architecture, API reference, reporting workflow, admin workflow, and end‑user guide sections. Identify required diagrams and code snippets.",
+          "estimated_hours": 1.45
+        },
+        {
+          "subtask_id": 2,
+          "title": "Write API Reference",
+          "description": "Document each public endpoint, request/response schemas, authentication, error codes, and usage examples. Generate Swagger/OpenAPI spec and embed it in the docs.",
+          "estimated_hours": 2.91
+        },
+        {
+          "subtask_id": 3,
+          "title": "Create Reporting Workflow Guide",
+          "description": "Produce step‑by‑step instructions for end users to generate, filter, and export reports. Include screenshots, best‑practice tips, and troubleshooting FAQ.",
+          "estimated_hours": 2.18
+        },
+        {
+          "subtask_id": 4,
+          "title": "Create Admin Workflow Guide",
+          "description": "Document admin tasks such as user management, permission configuration, system settings, and audit log review. Provide role‑based examples and security considerations.",
+          "estimated_hours": 2.18
+        },
+        {
+          "subtask_id": 5,
+          "title": "Assemble End‑User Guide",
+          "description": "Combine reporting and admin sections into a cohesive user guide, add a quick‑start tutorial, glossary, and index. Ensure consistent style and formatting.",
+          "estimated_hours": 1.82
+        },
+        {
+          "subtask_id": 6,
+          "title": "Review, Edit, and Publish",
+          "description": "Perform peer review, incorporate feedback, proofread for clarity, and publish documentation to the project wiki/website with proper versioning.",
+          "estimated_hours": 1.46
+        }
+      ]
+    }
+  ],
+  "risk_analysis": {
+    "project_name": "College Issue Reporting and Management System",
+    "overall_risk_level": "Medium",
+    "risks": [
+      {
+        "risk_id": 1,
+        "title": "Scope Creep and Uncontrolled Feature Additions",
+        "description": "Stakeholders may request additional functionalities (e.g., mobile app, analytics dashboards) after the initial plan, stretching the 182‑hour estimate and delaying delivery.",
+        "severity": "High",
+        "mitigation": "Establish a formal change control process: any new feature must be documented, impact‑analyzed, and approved by the project sponsor. Prioritize features in a product backlog and schedule them for future releases."
+      },
+      {
+        "risk_id": 2,
+        "title": "Backend‑Frontend Integration Delays due to API Contract Mismatch",
+        "description": "Task 5 depends on both backend (Task 3) and frontend (Task 4). If the API endpoints, request/response schemas, or authentication mechanisms differ from what the frontend expects, integration will stall, consuming extra time beyond the allocated 30 hours.",
+        "severity": "High",
+        "mitigation": "Develop an OpenAPI specification during Task 2 and share it with the frontend team. Use contract‑testing tools (e.g., Schemathesis, Postman) to validate implementations continuously. Schedule a joint integration checkpoint after Task 3 is 80% complete."
+      },
+      {
+        "risk_id": 3,
+        "title": "Insufficient Automated Testing Leading to Production Bugs",
+        "description": "Task 7 (Automated Testing) is scheduled after core development and integration. If test coverage is low, defects may surface post‑deployment, increasing support effort and harming user trust.",
+        "severity": "Medium",
+        "mitigation": "Adopt test‑driven development for new backend endpoints and frontend components. Define minimum coverage thresholds (e.g., 70% backend, 60% frontend) and enforce them via CI pipelines. Allocate a small portion of earlier tasks for writing tests alongside feature code."
+      },
+      {
+        "risk_id": 4,
+        "title": "Deployment Environment Incompatibilities",
+        "description": "Task 8 involves Dockerizing and deploying to a cloud environment. Differences between local development containers and the target cloud platform (e.g., networking, environment variables, database connections) can cause deployment failures close to the deadline.",
+        "severity": "Medium",
+        "mitigation": "Set up a staging environment that mirrors production early in the CI/CD pipeline. Use infrastructure‑as‑code (e.g., Terraform) to provision resources consistently. Perform a dry‑run deployment during Task 7 to catch issues early."
+      },
+      {
+        "risk_id": 5,
+        "title": "Low User Adoption and Limited Feedback",
+        "description": "If students and staff do not adopt the system, the project may not deliver its intended value, and future enhancements will lack real‑world data.",
+        "severity": "Low",
+        "mitigation": "Plan a pilot rollout with a small campus cohort, gather usability metrics, and incorporate feedback before full launch. Provide training sessions and promotional materials to raise awareness."
+      }
+    ],
+    "recommendations": [
+      "Adopt a lightweight Agile sprint cadence (2‑week sprints) with a clear Definition of Done for each task to surface delays early.",
+      "Create a detailed API specification (OpenAPI/Swagger) before backend development and lock it down with the frontend team to avoid contract mismatches.",
+      "Allocate a 10‑15% time buffer on critical path tasks (Database Design, Backend API Development, Frontend Integration) to absorb unforeseen complexity.",
+      "Implement automated testing (unit, integration, end‑to‑end) early; aim for at least 70% coverage before the testing phase begins.",
+      "Engage a pilot group of students and campus staff during the UI mockup stage to validate usability and gather early adoption feedback."
+    ]
+  },
+  "schedule": {
+    "project_name": "College Issue Reporting and Management System",
+    "total_duration_days": 19,
+    "critical_path": [
+      1,
+      2,
+      3,
+      5,
+      6,
+      7,
+      8
+    ],
+    "scheduled_tasks": [
+      {
+        "task_id": 1,
+        "title": "Project Setup & Planning",
+        "estimated_hours": 12.0,
+        "start_day": 1,
+        "end_day": 2,
+        "dependencies": []
+      },
+      {
+        "task_id": 2,
+        "title": "Database Design",
+        "estimated_hours": 16.0,
+        "start_day": 3,
+        "end_day": 4,
+        "dependencies": [
+          1
+        ]
+      },
+      {
+        "task_id": 3,
+        "title": "Backend API Development - Core Endpoints",
+        "estimated_hours": 24.0,
+        "start_day": 5,
+        "end_day": 7,
+        "dependencies": [
+          2
+        ]
+      },
+      {
+        "task_id": 4,
+        "title": "Frontend UI Mockup & Component Library",
+        "estimated_hours": 20.0,
+        "start_day": 3,
+        "end_day": 5,
+        "dependencies": [
+          1
+        ]
+      },
+      {
+        "task_id": 5,
+        "title": "Frontend Integration with API",
+        "estimated_hours": 30.0,
+        "start_day": 8,
+        "end_day": 11,
+        "dependencies": [
+          3,
+          4
+        ]
+      },
+      {
+        "task_id": 6,
+        "title": "Frontend Integration with Backend API",
+        "estimated_hours": 10.0,
+        "start_day": 12,
+        "end_day": 13,
+        "dependencies": [
+          5,
+          11
+        ]
+      },
+      {
+        "task_id": 11,
+        "title": "Backend Integration Support",
+        "estimated_hours": 8.0,
+        "start_day": 8,
+        "end_day": 8,
+        "dependencies": [
+          3,
+          4
+        ]
+      },
+      {
+        "task_id": 7,
+        "title": "Automated Testing",
+        "estimated_hours": 22.0,
+        "start_day": 14,
+        "end_day": 16,
+        "dependencies": [
+          3,
+          5,
+          6,
+          11
+        ]
+      },
+      {
+        "task_id": 8,
+        "title": "Deployment & Containerization",
+        "estimated_hours": 18.0,
+        "start_day": 17,
+        "end_day": 19,
+        "dependencies": [
+          7
+        ]
+      },
+      {
+        "task_id": 9,
+        "title": "Documentation & User Guide",
+        "estimated_hours": 12.0,
+        "start_day": 14,
+        "end_day": 15,
+        "dependencies": [
+          5,
+          6
+        ]
+      }
+    ],
+    "scheduling_notes": [
+      "Frontend UI work (task 4) runs in parallel with backend development (task 3) after initial setup",
+      "Integration tasks (5 and 6) start together once both backend core and UI components are ready, creating a parallel workload",
+      "Testing (task 7) waits for both integration streams, becoming the bottleneck before deployment",
+      "Documentation (task 9) proceeds alongside testing, finishing before final deployment"
+    ]
+  },
+  "resource_allocation": {
+    "project_name": "College Issue Reporting and Management System",
+    "assignments": [
+      {
+        "task_id": 1,
+        "required_skills": [
+          "Git",
+          "GitHub",
+          "Project Setup",
+          "CI/CD"
+        ],
+        "recommended_role": "Project Manager",
+        "estimated_effort_hours": 12.0,
+        "notes": "Initial setup is lightweight; can be handled by the Project Manager or a senior Full‑Stack Engineer with DevOps experience. Allocate 1‑2 days; ensure repository standards and CI pipeline are documented for downstream teams."
+      },
+      {
+        "task_id": 2,
+        "required_skills": [
+          "SQL",
+          "PostgreSQL",
+          "Database Design"
+        ],
+        "recommended_role": "Backend Developer",
+        "estimated_effort_hours": 16.0,
+        "notes": "Database schema design should be owned by a Backend Developer. Pair with the Project Manager for requirements validation. Estimated 2 full days; keep schema versioned for CI."
+      },
+      {
+        "task_id": 3,
+        "required_skills": [
+          "Python",
+          "FastAPI",
+          "API Design",
+          "SQL"
+        ],
+        "recommended_role": "Backend Developer",
+        "estimated_effort_hours": 24.0,
+        "notes": "Core API work is a high‑priority block. One Backend Developer can complete it in ~3 days. Ensure OpenAPI spec is generated for frontend consumption."
+      },
+      {
+        "task_id": 4,
+        "required_skills": [
+          "React",
+          "JavaScript",
+          "HTML",
+          "CSS"
+        ],
+        "recommended_role": "Frontend Developer",
+        "estimated_effort_hours": 20.0,
+        "notes": "Create component library and mock pages. A Frontend Developer can finish in ~2.5 days. Coordinate with Backend Developer on data shapes."
+      },
+      {
+        "task_id": 5,
+        "required_skills": [
+          "React",
+          "JavaScript",
+          "API Design",
+          "Testing"
+        ],
+        "recommended_role": "Full‑Stack Engineer",
+        "estimated_effort_hours": 30.0,
+        "notes": "Integration requires both frontend and backend knowledge. Assign a Full‑Stack Engineer to bridge gaps; allocate 4‑5 days. Include unit tests for API calls."
+      },
+      {
+        "task_id": 6,
+        "required_skills": [
+          "React",
+          "JavaScript"
+        ],
+        "recommended_role": "Frontend Developer",
+        "estimated_effort_hours": 10.0,
+        "notes": "Integrate React UI components with the prepared API endpoints."
+      },
+      {
+        "task_id": 11,
+        "required_skills": [
+          "Python",
+          "FastAPI"
+        ],
+        "recommended_role": "Backend Developer",
+        "estimated_effort_hours": 8.0,
+        "notes": "Verify FastAPI endpoint contracts and response consistency."
+      },
+      {
+        "task_id": 7,
+        "required_skills": [
+          "Pytest",
+          "Testing",
+          "Docker"
+        ],
+        "recommended_role": "QA Engineer",
+        "estimated_effort_hours": 22.0,
+        "notes": "QA Engineer writes unit and integration tests for both backend and frontend, and configures coverage. Should work closely with developers; allocate ~3 days."
+      },
+      {
+        "task_id": 8,
+        "required_skills": [
+          "Docker",
+          "CI/CD",
+          "Deployment"
+        ],
+        "recommended_role": "DevOps Engineer",
+        "estimated_effort_hours": 18.0,
+        "notes": "Containerization and pipeline automation are DevOps responsibilities. One DevOps Engineer can finish in ~2.5 days, ensuring rollback strategy and environment parity."
+      },
+      {
+        "task_id": 9,
+        "required_skills": [
+          "Documentation",
+          "Project Setup",
+          "Markdown"
+        ],
+        "recommended_role": "Technical Writer",
+        "estimated_effort_hours": 12.0,
+        "notes": "Technical Writer produces API docs, user guide, and onboarding material. Work can start after integration (tasks 5 & 6) are stable; allocate 1.5 days."
+      }
+    ],
+    "resource_recommendations": [
+      "Backend Developer",
+      "Frontend Developer",
+      "Full‑Stack Engineer",
+      "DevOps Engineer",
+      "QA Engineer",
+      "Technical Writer",
+      "Project Manager"
+    ]
+  },
+  "progress_report": {
+    "project_name": "College Issue Reporting and Management System",
+    "overall_progress_percentage": 0.0,
+    "completed_tasks": 0,
+    "pending_tasks": 10,
+    "delayed_tasks": [],
+    "task_progress": [
+      {
+        "task_id": 1,
+        "task_title": "Project Setup & Planning",
+        "planned_hours": 12.0,
+        "actual_hours": 0.0,
+        "status": "Pending",
+        "progress_percentage": 0.0,
+        "blockers": []
+      },
+      {
+        "task_id": 2,
+        "task_title": "Database Design",
+        "planned_hours": 16.0,
+        "actual_hours": 0.0,
+        "status": "Pending",
+        "progress_percentage": 0.0,
+        "blockers": []
+      },
+      {
+        "task_id": 3,
+        "task_title": "Backend API Development - Core Endpoints",
+        "planned_hours": 24.0,
+        "actual_hours": 0.0,
+        "status": "Pending",
+        "progress_percentage": 0.0,
+        "blockers": []
+      },
+      {
+        "task_id": 4,
+        "task_title": "Frontend UI Mockup & Component Library",
+        "planned_hours": 20.0,
+        "actual_hours": 0.0,
+        "status": "Pending",
+        "progress_percentage": 0.0,
+        "blockers": []
+      },
+      {
+        "task_id": 5,
+        "task_title": "Frontend Integration with API",
+        "planned_hours": 30.0,
+        "actual_hours": 0.0,
+        "status": "Pending",
+        "progress_percentage": 0.0,
+        "blockers": []
+      },
+      {
+        "task_id": 6,
+        "task_title": "Frontend Integration with Backend API",
+        "planned_hours": 10.0,
+        "actual_hours": 0.0,
+        "status": "Pending",
+        "progress_percentage": 0.0,
+        "blockers": []
+      },
+      {
+        "task_id": 11,
+        "task_title": "Backend Integration Support",
+        "planned_hours": 8.0,
+        "actual_hours": 0.0,
+        "status": "Pending",
+        "progress_percentage": 0.0,
+        "blockers": []
+      },
+      {
+        "task_id": 7,
+        "task_title": "Automated Testing",
+        "planned_hours": 22.0,
+        "actual_hours": 0.0,
+        "status": "Pending",
+        "progress_percentage": 0.0,
+        "blockers": []
+      },
+      {
+        "task_id": 8,
+        "task_title": "Deployment & Containerization",
+        "planned_hours": 18.0,
+        "actual_hours": 0.0,
+        "status": "Pending",
+        "progress_percentage": 0.0,
+        "blockers": []
+      },
+      {
+        "task_id": 9,
+        "task_title": "Documentation & User Guide",
+        "planned_hours": 12.0,
+        "actual_hours": 0.0,
+        "status": "Pending",
+        "progress_percentage": 0.0,
+        "blockers": []
+      }
+    ],
+    "recommendations": [
+      "Continue updating task status and actual hours regularly."
+    ]
+  },
+  "recommendations": {
+    "project_name": "College Issue Reporting and Management System",
+    "recommendations": [
+      {
+        "recommendation_id": 1,
+        "title": "Kick‑off Sprint Planning & Definition of Done",
+        "description": "Run a 2‑week sprint planning workshop to break each high‑priority task into sub‑tasks, assign owners, and define a clear Definition of Done (DoD) that includes unit tests, documentation, and code review. Capture the sprint backlog in a shared board (e.g., GitHub Projects) and schedule daily stand‑ups.",
+        "priority": "High",
+        "expected_benefit": "Creates visibility into progress, surfaces blockers early, and aligns the team on quality criteria, reducing the chance of hidden delays and scope creep."
+      },
+      {
+        "recommendation_id": 2,
+        "title": "Create & Lock Down an OpenAPI Specification Before Development",
+        "description": "During Task 2 (Database Design), draft a complete OpenAPI/Swagger spec for all backend endpoints, including request/response schemas, authentication, and error codes. Share the spec with the frontend team, generate client stubs, and enforce contract testing (e.g., Schemathesis) as part of the CI pipeline.",
+        "priority": "High",
+        "expected_benefit": "Eliminates the high‑severity risk of backend‑frontend integration delays by ensuring both sides work against a single source of truth, cutting rework and saving up to 20% of integration time."
+      },
+      {
+        "recommendation_id": 3,
+        "title": "Introduce Test‑Driven Development (TDD) for Core Features",
+        "description": "For each new endpoint (Task 3) and UI component (Task 4/5), write failing unit tests first, then implement the code to pass them. Enforce a minimum coverage threshold (70% backend, 60% frontend) via CI and treat coverage failures as blockers.",
+        "priority": "Medium",
+        "expected_benefit": "Addresses the medium‑severity risk of insufficient testing, catches defects early, and reduces post‑deployment bugs, leading to higher user confidence and lower support effort."
+      },
+      {
+        "recommendation_id": 4,
+        "title": "Set Up a Staging Environment Mirroring Production",
+        "description": "Configure a Docker‑based staging cluster that replicates the target cloud environment (network, env vars, DB). Deploy the application after Task 7 (Automated Testing) to this stage, run end‑to‑end smoke tests, and validate deployment scripts before the final production rollout.",
+        "priority": "Medium",
+        "expected_benefit": "Mitigates the medium‑severity deployment incompatibility risk, ensures a smooth final deployment, and provides a safe space for pilot users to test the system."
+      },
+      {
+        "recommendation_id": 5,
+        "title": "Pilot Rollout with Feedback Loop",
+        "description": "Select a small cohort of students and staff to use the UI mockups (Task 4) and early builds. Collect usability metrics, issue reports, and adoption data via a short survey. Incorporate feedback into the backlog before full launch.",
+        "priority": "Low",
+        "expected_benefit": "Reduces the low‑severity risk of low user adoption by validating the product with real users early, allowing adjustments that improve acceptance and provide actionable data for future releases."
+      }
+    ],
+    "summary": "Implement structured sprint planning, lock down an API contract, adopt TDD, provision a staging environment, and run a pilot with feedback. These actions directly address the highest risks—scope creep, integration mismatches, testing gaps, and deployment issues—while keeping the project on schedule and improving overall quality."
+  }
+}

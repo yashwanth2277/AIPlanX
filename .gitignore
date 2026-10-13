@@ -1,0 +1,23 @@
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+
+# Generated backups
+final_report*.bak
+final_report_before_*.json

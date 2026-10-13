@@ -1,0 +1,5 @@
+employee_id,employee_name,role,skills,experience,current_workload_percent,weekly_capacity_hours
+EMP001,Rahul,Backend Developer,Python;FastAPI;SQL;Git;GitHub;Pytest;Testing;Docker,3,40,40
+EMP002,Priya,Database Engineer,SQL;PostgreSQL;Database Design;Git;GitHub;Documentation,4,30,40
+EMP003,Arjun,ML Engineer,Python;Machine Learning;Pandas;Pytest;Testing;Git;GitHub,2,50,35
+EMP004,Sneha,Frontend Developer,React;JavaScript;HTML;CSS;Git;GitHub;Testing,3,20,40
