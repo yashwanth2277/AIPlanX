@@ -16,6 +16,15 @@ llm = ChatGroq(
 )
 
 
+def normalize_plan_total(plan: ProjectPlan) -> ProjectPlan:
+    """Derive the declared total from validated task estimates."""
+
+    actual_total = sum(task.estimated_hours for task in plan.tasks)
+
+    return plan.model_copy(
+        update={"total_estimated_hours": actual_total}
+    )
+
 
 def create_project_plan(project_description: str) -> ProjectPlan:
     structured_llm = llm.with_structured_output(
@@ -74,7 +83,7 @@ def create_project_plan(project_description: str) -> ProjectPlan:
             """
     )
 
-    return plan
+    return normalize_plan_total(plan)
 
 
 

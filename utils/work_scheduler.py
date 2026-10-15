@@ -98,7 +98,11 @@ def build_work_schedule(
             selected = None
 
             for score, skill_match, employee in candidates:
-                week = dependency_completion
+                week = (
+                    dependency_completion + 1
+                    if task.dependencies
+                    else 1
+                )
                 hours_left = task.estimated_hours
                 allocations = []
 
@@ -141,14 +145,32 @@ def build_work_schedule(
                     )
                     break
 
+
             if selected is None:
+                best_match = max(
+                    (
+                        calculate_skill_match(task, employee)
+                        for employee in employees
+                    ),
+                    default=0.0,
+                )
+
+                if best_match < 0.5:
+                    reason = (
+                        "No employee meets the minimum skill-match "
+                        f"threshold of 50%. Best available match: "
+                        f"{best_match:.0%}."
+                    )
+                else:
+                    reason = (
+                        "Employees meet the skill threshold, but "
+                        "none has sufficient schedulable weekly capacity."
+                    )
+
                 schedule.unscheduled_tasks.append({
                     "task_id": task.task_id,
                     "task_title": task.title,
-                    "reason": (
-                        "No employee meets the skill-match threshold "
-                        "and has schedulable weekly capacity."
-                    ),
+                    "reason": reason,
                 })
                 pending_tasks.remove(task)
                 continue

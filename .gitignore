@@ -24,3 +24,10 @@ final_report_before_*.json
 # Generated team workflow artifacts
 team_workflow.json
 team_workflow.mmd
+
+
+# Project management runtime state
+management_sessions/
+
+# Local backup files
+*.bak

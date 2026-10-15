@@ -3,3 +3,5 @@ EMP001,Rahul,Backend Developer,Python;FastAPI;SQL;Git;GitHub;Pytest;Testing;Dock
 EMP002,Priya,Database Engineer,SQL;PostgreSQL;Database Design;Git;GitHub;Documentation,4,30,40
 EMP003,Arjun,ML Engineer,Python;Machine Learning;Pandas;Pytest;Testing;Git;GitHub,2,50,35
 EMP004,Sneha,Frontend Developer,React;JavaScript;HTML;CSS;Git;GitHub;Testing,3,20,40
+EMP005,Kiran,Deployment Engineer,Docker;CI/CD;Deployment;Linux;Git;GitHub,3,0,40
+EMP006,Meera,Technical Writer,Documentation;Project Setup;Markdown;Git;GitHub,3,0,40
