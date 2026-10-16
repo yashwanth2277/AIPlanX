@@ -31,3 +31,10 @@ management_sessions/
 
 # Local backup files
 *.bak
+
+# Local SQLite database
+*.db
+*.db-journal
+
+# JSON store project copies
+json_projects/

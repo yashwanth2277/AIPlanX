@@ -1,6 +1,7 @@
 
 import pytest
 
+from schemas.assignment import TaskAssignment
 from schemas.project_management import (
     ProjectManagementState,
     TaskProgress,
@@ -163,3 +164,82 @@ def test_delay_for_unknown_task_is_rejected(state):
             delay_hours=2,
             reason="Waiting for approval",
         )
+
+
+def _state_with_assignments():
+    plan = ProjectPlan(
+        project_name="Demo",
+        project_summary="Test project",
+        total_estimated_hours=8,
+        tasks=[
+            {
+                "task_id": 1,
+                "title": "Build API",
+                "description": "Implement API",
+                "required_skills": ["Python"],
+                "estimated_hours": 4,
+                "priority": "High",
+                "dependencies": [],
+            },
+            {
+                "task_id": 2,
+                "title": "Build UI",
+                "description": "Implement UI",
+                "required_skills": ["React"],
+                "estimated_hours": 4,
+                "priority": "High",
+                "dependencies": [1],
+            },
+        ],
+    )
+
+    return ProjectManagementState(
+        plan=plan,
+        task_progress=[
+            TaskProgress(task_id=1),
+            TaskProgress(task_id=2),
+        ],
+        assignments=[
+            TaskAssignment(
+                task_id=1,
+                task_title="Build API",
+                employee_id="EMP001",
+                employee_name="Rahul",
+                match_score=0.9,
+                assignment_reason="Python match",
+            )
+        ],
+        applied_delay_ids=["1:existing"],
+    )
+
+
+def test_update_task_progress_preserves_assignments():
+    state = _state_with_assignments()
+
+    updated = update_task_progress(
+        state,
+        task_id=1,
+        status=TaskStatus.IN_PROGRESS,
+        progress_percent=25,
+        actual_hours_spent=1,
+    )
+
+    assert len(updated.assignments) == 1
+    assert updated.assignments[0].employee_id == "EMP001"
+    assert updated.applied_delay_ids == ["1:existing"]
+
+
+def test_record_task_delay_preserves_assignments():
+    state = _state_with_assignments()
+
+    updated = record_task_delay(
+        state,
+        task_id=1,
+        delay_hours=2,
+        reason="Waiting for review",
+    )
+
+    assert len(updated.assignments) == 1
+    assert updated.assignments[0].employee_name == "Rahul"
+    assert updated.applied_delay_ids == ["1:existing"]
+    assert len(updated.task_progress[0].delays) == 1

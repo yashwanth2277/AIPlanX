@@ -173,6 +173,78 @@ def test_planner_agent_returns_valid_plan():
 
 
 
+def test_fix_total_hours_corrects_inconsistent_total():
+    """_fix_total_hours must correct the declared total before Pydantic validation."""
+    from agents.planner import _fix_total_hours
+
+    raw = {
+        "tasks": [
+            {"estimated_hours": 10},
+            {"estimated_hours": 12},
+            {"estimated_hours": 8},
+        ],
+        "total_estimated_hours": 100,  # deliberately wrong (actual = 30)
+    }
+    fixed = _fix_total_hours(raw)
+    assert fixed["total_estimated_hours"] == 30.0
+
+
+def test_fix_total_hours_is_noop_when_already_correct():
+    from agents.planner import _fix_total_hours
+
+    raw = {
+        "tasks": [{"estimated_hours": 5}, {"estimated_hours": 5}],
+        "total_estimated_hours": 10,
+    }
+    fixed = _fix_total_hours(raw)
+    assert fixed["total_estimated_hours"] == 10.0
+
+
+def test_planner_normalises_inconsistent_total_from_llm():
+    """Planner must produce a valid plan even when the LLM returns a wrong total.
+
+    Simulates the exact failure mode from Failure B: the raw LLM dict has
+    total_estimated_hours != sum(task.estimated_hours).  The planner must
+    correct this before Pydantic validation and return a valid plan.
+    """
+    from unittest.mock import MagicMock, patch
+    from agents.planner import create_project_plan
+
+    # Nine tasks each with 62/9 hours, but total declared as 72 (wrong).
+    task_hours = round(62 / 9, 4)
+    raw_plan_dict = {
+        "project_name": "Test Project",
+        "project_summary": "A test project.",
+        "total_estimated_hours": 72,  # intentionally wrong
+        "tasks": [
+            {
+                "task_id": i,
+                "title": f"Task {i}",
+                "description": "Do something.",
+                "required_skills": ["Python"],
+                "estimated_hours": task_hours,
+                "priority": "High",
+                "dependencies": [],
+            }
+            for i in range(1, 10)
+        ],
+        "risks": ["Risk A", "Risk B", "Risk C"],
+    }
+
+    structured_llm = MagicMock()
+    structured_llm.invoke.return_value = raw_plan_dict
+
+    llm_mock = MagicMock()
+    llm_mock.with_structured_output.return_value = structured_llm
+
+    with patch("agents.planner.llm", llm_mock):
+        plan = create_project_plan("Build something")
+
+    assert isinstance(plan, ProjectPlan)
+    actual_sum = sum(t.estimated_hours for t in plan.tasks)
+    assert abs(plan.total_estimated_hours - actual_sum) < 0.01
+
+
 def test_task_breakdown_agent_returns_valid_subtasks():
     parent_hours = 8
 

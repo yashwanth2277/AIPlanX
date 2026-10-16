@@ -1,20 +1,11 @@
 
-import os
-
-from dotenv import load_dotenv
-from langchain_groq import ChatGroq
-
 from schemas.project_plan import ProjectPlan
 from schemas.risk_analysis import RiskAnalysis
 from schemas.progress_tracking import ProgressReport
 from schemas.recommendations import RecommendationReport
+from utils.groq_client import LazyChatGroq
 
-load_dotenv()
-
-if not os.getenv("GROQ_API_KEY"):
-    raise ValueError("GROQ_API_KEY is missing from .env")
-
-llm = ChatGroq(
+llm = LazyChatGroq(
     model="openai/gpt-oss-120b",
     temperature=0,
 )

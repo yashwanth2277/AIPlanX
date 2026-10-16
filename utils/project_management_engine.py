@@ -74,7 +74,9 @@ def update_task_progress(
     return ProjectManagementState(
         plan=state.plan,
         task_progress=updated_records,
+        assignments=state.assignments,
         assignment_changes=state.assignment_changes,
+        applied_delay_ids=state.applied_delay_ids,
     )
 
 
@@ -121,7 +123,7 @@ def record_task_delay(
     return ProjectManagementState(
         plan=state.plan,
         task_progress=updated_records,
-        ssignments=state.assignments,
+        assignments=state.assignments,
         assignment_changes=state.assignment_changes,
         applied_delay_ids=state.applied_delay_ids,
     )
