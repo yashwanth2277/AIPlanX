@@ -19,6 +19,14 @@ class ProgressUpdateRequest(BaseModel):
     progress_percent: float = Field(ge=0, le=100)
     actual_hours_spent: float | None = Field(default=None, ge=0)
 
+    completed_work: str | None = Field(default=None, max_length=5000)
+    remaining_work: str | None = Field(default=None, max_length=5000)
+    blockers: list[str] = Field(default_factory=list)
+    comment: str | None = Field(default=None, max_length=3000)
+
+    updated_by: str = Field(default="Unspecified", max_length=200)
+    updater_role: str | None = Field(default=None, max_length=100)
+
 
 class DelayRequest(BaseModel):
     delay_hours: float = Field(gt=0)

@@ -46,3 +46,10 @@ class ManagementWorkflowState(TypedDict, total=False):
     # Management reports
     management_report: dict
     management_ai_insights: ManagementAIInsights
+
+    update_completed_work: str
+    update_remaining_work: str
+    update_blockers: list[str]
+    update_comment: str
+    update_by: str
+    update_role: str

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from schemas.project_management import (
     DelayRecord,
     ProjectManagementState,
+    TaskActivity,
     TaskProgress,
     TaskStatus,
 )
@@ -15,8 +16,14 @@ def update_task_progress(
     status: TaskStatus,
     progress_percent: float,
     actual_hours_spent: float | None = None,
+    completed_work: str | None = None,
+    remaining_work: str | None = None,
+    blockers: list[str] | None = None,
+    comment: str | None = None,
+    updated_by: str = "Unspecified",
+    updater_role: str | None = None,
 ) -> ProjectManagementState:
-    """Update one task's progress without modifying the original state."""
+    """Update task progress and preserve a permanent activity history."""
 
     plan_tasks = {
         task.task_id: task
@@ -52,18 +59,62 @@ def update_task_progress(
                     f"dependency {dependency_id} is not completed"
                 )
 
-    # Construct a new Pydantic model so validation is applied.
+    updated_at = datetime.now(timezone.utc)
+
+    new_hours = (
+        actual_hours_spent
+        if actual_hours_spent is not None
+        else current.actual_hours_spent
+    )
+
+    new_blockers = (
+        blockers
+        if blockers is not None
+        else current.blockers
+    )
+    new_completed_work = (
+        completed_work
+        if completed_work is not None
+        else current.completed_work
+    )
+
+    new_remaining_work = (
+        remaining_work
+        if remaining_work is not None
+        else current.remaining_work
+    )
+
+    new_comment = (
+        comment
+        if comment is not None
+        else current.comment
+    )
+
     updated_record = TaskProgress(
         task_id=current.task_id,
         status=status,
         progress_percent=progress_percent,
-        actual_hours_spent=(
-            actual_hours_spent
-            if actual_hours_spent is not None
-            else current.actual_hours_spent
-        ),
+        actual_hours_spent=new_hours,
+        completed_work=new_completed_work,
+        remaining_work=new_remaining_work,
+        blockers=new_blockers,
+        comment=new_comment,
         delays=current.delays,
-        updated_at=datetime.now(timezone.utc),
+        updated_at=updated_at,
+    )
+
+    activity = TaskActivity(
+        task_id=task_id,
+        updated_by=updated_by,
+        updater_role=updater_role,
+        status=status,
+        progress_percent=progress_percent,
+        actual_hours_spent=new_hours,
+        completed_work=new_completed_work,
+        remaining_work=new_remaining_work,
+        blockers=new_blockers,
+        comment=new_comment,
+        recorded_at=updated_at,
     )
 
     updated_records = [
@@ -77,6 +128,10 @@ def update_task_progress(
         assignments=state.assignments,
         assignment_changes=state.assignment_changes,
         applied_delay_ids=state.applied_delay_ids,
+        activity_history=[
+            *state.activity_history,
+            activity,
+        ],
     )
 
 
@@ -86,7 +141,7 @@ def record_task_delay(
     delay_hours: float,
     reason: str,
 ) -> ProjectManagementState:
-    """Record a delay for a known task without modifying the original state."""
+    """Record a delay without modifying the original state."""
 
     progress_records = {
         record.task_id: record
@@ -98,19 +153,21 @@ def record_task_delay(
 
     current = progress_records[task_id]
 
-    # Validate delay hours and reason through the Pydantic model.
     delay = DelayRecord(
         task_id=task_id,
         delay_hours=delay_hours,
         reason=reason,
     )
 
-    # Reconstruct the model to validate the updated record.
     updated_record = TaskProgress(
         task_id=current.task_id,
         status=current.status,
         progress_percent=current.progress_percent,
         actual_hours_spent=current.actual_hours_spent,
+        completed_work=current.completed_work,
+        remaining_work=current.remaining_work,
+        blockers=current.blockers,
+        comment=current.comment,
         delays=[*current.delays, delay],
         updated_at=datetime.now(timezone.utc),
     )
@@ -126,4 +183,5 @@ def record_task_delay(
         assignments=state.assignments,
         assignment_changes=state.assignment_changes,
         applied_delay_ids=state.applied_delay_ids,
+        activity_history=state.activity_history,
     )

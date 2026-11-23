@@ -170,6 +170,29 @@ def create_app(store=None) -> FastAPI:
         session = request.app.state.store.get_session(name)
         return {"tasks": serialize_tasks(session)}
 
+    @app.get("/api/sessions/{name}/tasks/{task_id}/activity")
+    def task_activity(name: str, task_id: int, request: Request):
+        session = request.app.state.store.get_session(name)
+
+        if not any(
+            task.task_id == task_id
+            for task in session.management_state.plan.tasks
+        ):
+            raise HTTPException(
+                status_code=404,
+                detail=f"Task {task_id} not found",
+            )
+
+        activities = [
+            activity.model_dump(mode="json")
+            for activity in session.management_state.activity_history
+            if activity.task_id == task_id
+        ]
+
+        return {
+            "task_id": task_id,
+            "activities": activities,
+        }
     @app.patch("/api/sessions/{name}/tasks/{task_id}/progress")
     def update_progress(
         name: str,
@@ -186,6 +209,12 @@ def create_app(store=None) -> FastAPI:
                 "update_task_status": body.status,
                 "update_progress_percent": body.progress_percent,
                 "update_actual_hours_spent": body.actual_hours_spent,
+                "update_completed_work": body.completed_work,
+                "update_remaining_work": body.remaining_work,
+                "update_blockers": body.blockers,
+                "update_comment": body.comment,
+                "update_by": body.updated_by,
+                "update_role": body.updater_role,
             },
         )
 

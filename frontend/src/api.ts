@@ -97,6 +97,32 @@ export type TaskRow = {
   delays: { delay_hours: number; reason: string }[]
 }
 
+export type TaskActivity = {
+  task_id: number
+  updated_by: string
+  updater_role: string | null
+  status: string
+  progress_percent: number
+  actual_hours_spent: number
+  completed_work: string
+  remaining_work: string
+  blockers: string[]
+  comment: string
+  recorded_at: string
+}
+
+export type ProgressUpdatePayload = {
+  status: string
+  progress_percent: number
+  actual_hours_spent?: number
+  completed_work?: string
+  remaining_work?: string
+  blockers?: string[]
+  comment?: string
+  updated_by?: string
+  updater_role?: string
+}
+
 export type Employee = {
   employee_id: string
   employee_name: string
@@ -155,23 +181,44 @@ export type PlanJob = {
   session_name: string | null
 }
 
+export type ProjectListItem = {
+  id: number
+  name: string
+  summary: string
+  created_at: string
+  has_report: boolean
+}
+
 export const api = {
-  health: () => request<{ status: string }>('/api/health'),
+  health: () => request<{ status: string; store?: string }>('/api/health'),
+  projects: () => request<{ projects: ProjectListItem[] }>('/api/projects'),
   sessions: () => request<{ sessions: SessionSummary[] }>('/api/sessions'),
+  createSession: (name: string, projectId: number) =>
+    request<{ name: string }>('/api/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ name, project_id: projectId }),
+    }),
   overview: (name: string) => request<Overview>(`/api/sessions/${name}/overview`),
   tasks: (name: string) => request<{ tasks: TaskRow[] }>(`/api/sessions/${name}/tasks`),
   schedule: (name: string) => request<{ scheduled_tasks: ScheduledTask[]; unscheduled_tasks: unknown[] }>(`/api/sessions/${name}/schedule`),
   employees: () => request<{ employees: Employee[] }>('/api/employees'),
   report: (name: string) => request<ManagementReportPayload>(`/api/sessions/${name}/report`),
+
   updateProgress: (
     name: string,
     taskId: number,
-    body: { status: string; progress_percent: number; actual_hours_spent?: number },
+    body: ProgressUpdatePayload,
   ) =>
     request(`/api/sessions/${name}/tasks/${taskId}/progress`, {
       method: 'PATCH',
       body: JSON.stringify(body),
     }),
+
+  taskActivity: (name: string, taskId: number) =>
+    request<{ task_id: number; activities: TaskActivity[] }>(
+      `/api/sessions/${name}/tasks/${taskId}/activity`,
+    ),
+
   recordDelay: (name: string, taskId: number, body: { delay_hours: number; reason: string }) =>
     request(`/api/sessions/${name}/tasks/${taskId}/delays`, {
       method: 'POST',

@@ -29,6 +29,13 @@ class TaskProgress(BaseModel):
     status: TaskStatus = TaskStatus.PENDING
     progress_percent: float = Field(default=0, ge=0, le=100)
     actual_hours_spent: float = Field(default=0, ge=0)
+
+    # New task progress details
+    completed_work: str = ""
+    remaining_work: str = ""
+    blockers: list[str] = Field(default_factory=list)
+    comment: str = ""
+
     delays: list[DelayRecord] = Field(default_factory=list)
     updated_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
@@ -49,6 +56,27 @@ class TaskProgress(BaseModel):
         return self
 
 
+class TaskActivity(BaseModel):
+    """A permanent record of an individual task update."""
+
+    task_id: int
+    updated_by: str = "Unspecified"
+    updater_role: str | None = None
+
+    status: TaskStatus
+    progress_percent: float = Field(ge=0, le=100)
+    actual_hours_spent: float = Field(ge=0)
+
+    completed_work: str = ""
+    remaining_work: str = ""
+    blockers: list[str] = Field(default_factory=list)
+    comment: str = ""
+
+    recorded_at: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )
+
+
 class AssignmentChange(BaseModel):
     task_id: int
     previous_employee_id: str | None = None
@@ -57,7 +85,6 @@ class AssignmentChange(BaseModel):
     changed_at: datetime = Field(
         default_factory=lambda: datetime.now(timezone.utc)
     )
-
 
 
 class ProjectManagementState(BaseModel):
@@ -69,6 +96,9 @@ class ProjectManagementState(BaseModel):
     )
     applied_delay_ids: list[str] = Field(default_factory=list)
 
+    # New persistent task activity history
+    activity_history: list[TaskActivity] = Field(default_factory=list)
+
     @model_validator(mode="after")
     def validate_applied_delay_ids(self):
         if len(self.applied_delay_ids) != len(set(self.applied_delay_ids)):
@@ -78,6 +108,7 @@ class ProjectManagementState(BaseModel):
     @model_validator(mode="after")
     def validate_task_records(self):
         plan_task_ids = {task.task_id for task in self.plan.tasks}
+
         progress_task_ids = [
             task.task_id for task in self.task_progress
         ]
@@ -96,7 +127,9 @@ class ProjectManagementState(BaseModel):
         ]
 
         if len(assignment_task_ids) != len(set(assignment_task_ids)):
-            raise ValueError("Each task can have only one current assignment")
+            raise ValueError(
+                "Each task can have only one current assignment"
+            )
 
         for task_id in assignment_task_ids:
             if task_id not in plan_task_ids:
@@ -119,6 +152,12 @@ class ProjectManagementState(BaseModel):
                 raise ValueError(
                     f"Assignment change references unknown task "
                     f"{change.task_id}"
+                )
+
+        for activity in self.activity_history:
+            if activity.task_id not in plan_task_ids:
+                raise ValueError(
+                    f"Activity references unknown task {activity.task_id}"
                 )
 
         return self

@@ -41,6 +41,12 @@ def update_progress_node(
         status=state["update_task_status"],
         progress_percent=state["update_progress_percent"],
         actual_hours_spent=state.get("update_actual_hours_spent"),
+        completed_work=state.get("update_completed_work"),
+        remaining_work=state.get("update_remaining_work"),
+        blockers=state.get("update_blockers"),
+        comment=state.get("update_comment"),
+        updated_by=state.get("update_by", "Unspecified"),
+        updater_role=state.get("update_role"),
     )
 
     return {"management_state": updated_state}
