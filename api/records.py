@@ -14,6 +14,7 @@ class ProjectRecord(BaseModel):
     summary: str = ""
     description: str = ""
     created_at: datetime
+    updated_at: datetime | None = None
     final_report: FinalProjectReport | None = None
     team_workflow: dict | None = None
 

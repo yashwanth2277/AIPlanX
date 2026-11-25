@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import create_engine, delete, select
+from sqlalchemy import create_engine, delete, select, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 
 from schemas.assignment import TaskAssignment
@@ -14,7 +15,22 @@ from utils.employee_parser import parse_employee_csv
 from utils.management_persistence import load_management_state
 from utils.schedule_persistence import load_work_schedule
 
-from api.db_models import Base, EmployeeRow, ProjectRow, SessionRow, utcnow
+from api.db_models import (
+    ActivityLogRow,
+    Base,
+    DeadlineChangeRow,
+    EmployeeRow,
+    InvitationRow,
+    ProgressUpdateRow,
+    ProjectMemberRow,
+    ProjectRow,
+    ReportRow,
+    SessionRow,
+    TaskAssigneeRow,
+    TaskRow,
+    TeamMemberRow,
+    utcnow,
+)
 from api.paths import EMPLOYEE_PATH, REPORT_PATH, SESSION_DIR, TEAM_WORKFLOW_PATH
 from api.records import ProjectRecord, SessionRecord, SessionSummary
 from api.session_names import validate_session_name
@@ -38,6 +54,30 @@ class SqliteStore:
     def initialize(self) -> None:
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         Base.metadata.create_all(self.engine)
+        with self.engine.connect() as conn:
+            try:
+                conn.execute(
+                    text("ALTER TABLE projects ADD COLUMN updated_at DATETIME")
+                )
+                conn.commit()
+            except OperationalError:
+                pass
+            try:
+                conn.execute(
+                    text(
+                        "UPDATE projects SET updated_at = created_at WHERE updated_at IS NULL"
+                    )
+                )
+                conn.commit()
+            except OperationalError:
+                pass
+            try:
+                conn.execute(
+                    text("ALTER TABLE team_members ADD COLUMN allocation_days INTEGER")
+                )
+                conn.commit()
+            except OperationalError:
+                pass
 
     def _db(self) -> Session:
         return self._session_factory()
@@ -95,10 +135,13 @@ class SqliteStore:
                 team_workflow = TeamWorkflow.model_validate_json(
                     team_workflow_path.read_text(encoding="utf-8")
                 ).model_dump(mode="json")
+            now = utcnow()
             row = ProjectRow(
                 name=report.project_plan.project_name,
                 summary=report.project_plan.project_summary,
                 description="",
+                created_at=now,
+                updated_at=now,
                 final_report=report.model_dump(mode="json"),
                 team_workflow=team_workflow,
             )
@@ -209,6 +252,212 @@ class SqliteStore:
                 )
             db.commit()
 
+    # ------------------------------------------------------------------ #
+    # Project-scoped team members (System B)                               #
+    # ------------------------------------------------------------------ #
+
+    def list_team_members(self, project_id: int) -> list[dict]:
+        with self._db() as db:
+            rows = db.scalars(
+                select(TeamMemberRow)
+                .where(TeamMemberRow.project_id == project_id)
+                .order_by(TeamMemberRow.id)
+            ).all()
+            return [self._team_member_dict(row) for row in rows]
+
+    def list_effective_employees(
+        self, project_id: int | None = None
+    ) -> list[Employee]:
+        global_employees = self.list_employees()
+        if project_id is None:
+            return global_employees
+
+        project_members = self.list_team_members(project_id)
+        if not project_members:
+            return global_employees
+
+        effective: list[Employee] = []
+        seen_names: set[str] = set()
+        seen_ids: set[str] = set()
+
+        for tm in project_members:
+            mid = tm["id"]
+            name = tm["name"].strip()
+            skills = [
+                s.strip()
+                for s in tm.get("skills", [])
+                if isinstance(s, str) and s.strip()
+            ] or ["General"]
+            emp_id = f"TM{mid}"
+
+            emp = Employee(
+                employee_id=emp_id,
+                employee_name=name,
+                role=tm.get("role") or "Team Member",
+                skills=skills,
+                experience=float(tm.get("experience") or 0.0),
+                weekly_capacity_hours=float(
+                    tm.get("weekly_capacity_hours") or 40.0
+                ),
+                current_workload_percent=float(
+                    tm.get("current_workload_percent") or 0.0
+                ),
+            )
+            effective.append(emp)
+            seen_names.add(name.casefold())
+            seen_ids.add(emp_id)
+
+        for g_emp in global_employees:
+            name_key = g_emp.employee_name.strip().casefold()
+            if name_key not in seen_names and g_emp.employee_id not in seen_ids:
+                effective.append(g_emp)
+                seen_names.add(name_key)
+                seen_ids.add(g_emp.employee_id)
+
+        return effective
+
+    def add_team_member(
+        self,
+        project_id: int,
+        *,
+        name: str,
+        role: str,
+        member_type: str,
+        skills: list[str],
+        allocation_days: int,
+        email: str = "",
+    ) -> dict:
+        self.initialize()
+        now = utcnow()
+        with self._db() as db:
+            # Verify project exists
+            proj = db.get(ProjectRow, project_id)
+            if proj is None:
+                raise FileNotFoundError(f"Project {project_id} not found")
+            row = TeamMemberRow(
+                project_id=project_id,
+                name=name,
+                email=email,
+                role=role,
+                member_type=member_type,
+                skills=skills,
+                allocation_days=allocation_days,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(row)
+            db.commit()
+            db.refresh(row)
+            return self._team_member_dict(row)
+
+    def get_team_member(self, member_id: int) -> dict:
+        with self._db() as db:
+            row = db.get(TeamMemberRow, member_id)
+            if row is None:
+                raise FileNotFoundError(f"Team member {member_id} not found")
+            return self._team_member_dict(row)
+
+    def delete_team_member(self, member_id: int, project_id: int) -> None:
+        with self._db() as db:
+            row = db.get(TeamMemberRow, member_id)
+            if row is None:
+                raise FileNotFoundError(f"Team member {member_id} not found")
+            if row.project_id != project_id:
+                raise ValueError(
+                    f"Team member {member_id} does not belong to project {project_id}"
+                )
+            db.delete(row)
+            db.commit()
+
+    def update_team_member(
+        self,
+        member_id: int,
+        project_id: int,
+        *,
+        name: str | None = None,
+        role: str | None = None,
+        member_type: str | None = None,
+        skills: list[str] | None = None,
+        allocation_days: int | None = None,
+    ) -> dict:
+        self.initialize()
+        now = utcnow()
+        with self._db() as db:
+            row = db.get(TeamMemberRow, member_id)
+            if row is None:
+                raise FileNotFoundError(f"Team member {member_id} not found")
+            if row.project_id != project_id:
+                raise ValueError(
+                    f"Team member {member_id} does not belong to project {project_id}"
+                )
+            if name is not None:
+                row.name = name
+            if role is not None:
+                row.role = role
+            if member_type is not None:
+                row.member_type = member_type
+            if skills is not None:
+                row.skills = skills
+            if allocation_days is not None:
+                row.allocation_days = allocation_days
+            row.updated_at = now
+
+            if name is not None:
+                sessions = db.scalars(
+                    select(SessionRow).where(SessionRow.project_id == project_id)
+                ).all()
+                for s_row in sessions:
+                    try:
+                        state_dict = s_row.management_state
+                        sched_dict = s_row.work_schedule
+                        target_id = f"TM{member_id}"
+                        changed = False
+                        if state_dict and "assignments" in state_dict:
+                            for a in state_dict["assignments"]:
+                                if a.get("employee_id") in (target_id, str(member_id)):
+                                    a["employee_name"] = name
+                                    changed = True
+                        if sched_dict and "scheduled_tasks" in sched_dict:
+                            for st in sched_dict["scheduled_tasks"]:
+                                if st.get("employee_id") in (target_id, str(member_id)):
+                                    st["employee_name"] = name
+                                    changed = True
+                        if changed:
+                            s_row.management_state = state_dict
+                            s_row.work_schedule = sched_dict
+                            s_row.updated_at = now
+                    except Exception:
+                        pass
+
+            db.commit()
+            db.refresh(row)
+            return self._team_member_dict(row)
+
+    @staticmethod
+    def _team_member_dict(row: TeamMemberRow) -> dict:
+        created = row.created_at
+        updated = row.updated_at
+        if created and created.tzinfo is None:
+            from datetime import timezone as _tz
+            created = created.replace(tzinfo=_tz.utc)
+        if updated and updated.tzinfo is None:
+            from datetime import timezone as _tz
+            updated = updated.replace(tzinfo=_tz.utc)
+        return {
+            "id": row.id,
+            "project_id": row.project_id,
+            "name": row.name,
+            "role": row.role,
+            "member_type": row.member_type,
+            "skills": row.skills or [],
+            "allocation_days": row.allocation_days,
+            "experience": row.experience,
+            "weekly_capacity_hours": row.weekly_capacity_hours,
+            "current_workload_percent": row.current_workload_percent,
+            "created_at": created.isoformat() if created else None,
+            "updated_at": updated.isoformat() if updated else None,
+        }
+
     def list_projects(self) -> list[ProjectRecord]:
         with self._db() as db:
             rows = db.scalars(select(ProjectRow).order_by(ProjectRow.id)).all()
@@ -232,6 +481,7 @@ class SqliteStore:
         project_id: int | None = None,
     ) -> ProjectRecord:
         self.initialize()
+        now = utcnow()
         with self._db() as db:
             row = db.get(ProjectRow, project_id) if project_id else None
             if row is None:
@@ -239,6 +489,8 @@ class SqliteStore:
                     name=name,
                     summary=summary,
                     description=description,
+                    created_at=now,
+                    updated_at=now,
                     final_report=(
                         final_report.model_dump(mode="json")
                         if final_report
@@ -246,11 +498,14 @@ class SqliteStore:
                     ),
                     team_workflow=team_workflow,
                 )
+                if project_id is not None:
+                    row.id = project_id
                 db.add(row)
             else:
                 row.name = name
                 row.summary = summary
                 row.description = description
+                row.updated_at = now
                 if final_report is not None:
                     row.final_report = final_report.model_dump(mode="json")
                 if team_workflow is not None:
@@ -258,6 +513,58 @@ class SqliteStore:
             db.commit()
             db.refresh(row)
             return self._project_record(row)
+
+    def update_project(
+        self,
+        project_id: int,
+        *,
+        name: str | None = None,
+        summary: str | None = None,
+        description: str | None = None,
+    ) -> ProjectRecord:
+        self.initialize()
+        with self._db() as db:
+            row = db.get(ProjectRow, project_id)
+            if row is None:
+                raise FileNotFoundError(f"Project {project_id} not found")
+            if name is not None:
+                row.name = name
+            if summary is not None:
+                row.summary = summary
+            if description is not None:
+                row.description = description
+            row.updated_at = utcnow()
+            db.commit()
+            db.refresh(row)
+            return self._project_record(row)
+
+    def delete_project(self, project_id: int) -> None:
+        self.initialize()
+        with self._db() as db:
+            row = db.get(ProjectRow, project_id)
+            if row is None:
+                raise FileNotFoundError(f"Project {project_id} not found")
+            # Unlink any session that referenced this project
+            sessions = db.scalars(
+                select(SessionRow).where(SessionRow.project_id == project_id)
+            ).all()
+            for s in sessions:
+                s.project_id = None
+            # Clean up child rows in other tables if any exist
+            for tbl in (
+                TaskAssigneeRow,
+                ProgressUpdateRow,
+                DeadlineChangeRow,
+                TaskRow,
+                TeamMemberRow,
+                ProjectMemberRow,
+                InvitationRow,
+                ReportRow,
+                ActivityLogRow,
+            ):
+                db.execute(delete(tbl).where(tbl.project_id == project_id))
+            db.delete(row)
+            db.commit()
 
     def list_sessions(self) -> list[SessionSummary]:
         with self._db() as db:
@@ -319,12 +626,19 @@ class SqliteStore:
             return self._session_record(row)
 
     def _project_record(self, row: ProjectRow) -> ProjectRecord:
+        created = row.created_at
+        if created and created.tzinfo is None:
+            created = created.replace(tzinfo=timezone.utc)
+        updated = getattr(row, "updated_at", None) or created
+        if updated and updated.tzinfo is None:
+            updated = updated.replace(tzinfo=timezone.utc)
         return ProjectRecord(
             id=row.id,
             name=row.name,
             summary=row.summary,
             description=row.description,
-            created_at=row.created_at,
+            created_at=created,
+            updated_at=updated,
             final_report=(
                 FinalProjectReport.model_validate(row.final_report)
                 if row.final_report

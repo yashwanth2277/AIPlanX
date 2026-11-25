@@ -60,6 +60,10 @@ export type WorkspaceContextValue = {
   saveDelay: (event: FormEvent) => void
   runDelayAnalysis: (event: FormEvent) => void
   saveReassign: (event: FormEvent) => void
+  addCollaborator: (employeeId: string, reason?: string) => Promise<void>
+  removeCollaborator: (employeeId: string) => Promise<void>
+  actionError: string
+  setActionError: (val: string) => void
 }
 
 export const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)

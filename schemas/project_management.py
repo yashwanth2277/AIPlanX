@@ -122,19 +122,20 @@ class ProjectManagementState(BaseModel):
                 "and no other tasks"
             )
 
-        assignment_task_ids = [
-            assignment.task_id for assignment in self.assignments
+        assignment_pairs = [
+            (assignment.task_id, assignment.employee_id)
+            for assignment in self.assignments
         ]
 
-        if len(assignment_task_ids) != len(set(assignment_task_ids)):
+        if len(assignment_pairs) != len(set(assignment_pairs)):
             raise ValueError(
-                "Each task can have only one current assignment"
+                "An employee can only be assigned once to the same task"
             )
 
-        for task_id in assignment_task_ids:
-            if task_id not in plan_task_ids:
+        for assignment in self.assignments:
+            if assignment.task_id not in plan_task_ids:
                 raise ValueError(
-                    f"Assignment references unknown task {task_id}"
+                    f"Assignment references unknown task {assignment.task_id}"
                 )
 
         for delay in (

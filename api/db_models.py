@@ -51,6 +51,7 @@ class ProjectRow(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     description: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     final_report: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     team_workflow: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
@@ -125,6 +126,7 @@ class TeamMemberRow(Base):
     experience: Mapped[float] = mapped_column(Float, default=0)
     weekly_capacity_hours: Mapped[float] = mapped_column(Float, default=40)
     current_workload_percent: Mapped[float] = mapped_column(Float, default=0)
+    allocation_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

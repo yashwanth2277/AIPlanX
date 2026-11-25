@@ -28,7 +28,10 @@ def create_management_session(
             f"Session '{name}' already exists. Resume it instead of overwriting it."
         )
 
-    employees = store.list_employees()
+    if hasattr(store, "list_effective_employees"):
+        employees = store.list_effective_employees(project_id=project_id)
+    else:
+        employees = store.list_employees()
     if not employees:
         raise ValueError("No employees are available to assign work.")
 
@@ -129,9 +132,15 @@ def build_overview(session: SessionRecord, employee_count: int) -> dict:
         item for item in progress_records if item.delays
     ]
     at_risk = counts[TaskStatus.BLOCKED.value] + len(delayed_tasks)
-    assigned = {
-        item.task_id: item for item in state.assignments
-    }
+    assigned = {}
+    task_collaborators = {}
+    for item in state.assignments:
+        if item.task_id not in assigned:
+            assigned[item.task_id] = item
+        if item.task_id not in task_collaborators:
+            task_collaborators[item.task_id] = []
+        task_collaborators[item.task_id].append(item)
+
     plan_by_id = {task.task_id: task for task in state.plan.tasks}
 
     status_rank = {
@@ -152,8 +161,11 @@ def build_overview(session: SessionRecord, employee_count: int) -> dict:
     tasks = []
     for index, item in enumerate(priority_tasks):
         task = plan_by_id[item.task_id]
-        assignment = assigned.get(item.task_id)
-        owner = assignment.employee_name if assignment else "Unassigned"
+        collaborators = task_collaborators.get(item.task_id, [])
+        if collaborators:
+            owner = ", ".join(c.employee_name for c in collaborators)
+        else:
+            owner = "Unassigned"
         initials = "".join(part[0] for part in owner.split()[:2]).upper() or "?"
         due = _due_label(schedule, item.task_id)
         tasks.append({
@@ -253,17 +265,30 @@ def build_overview(session: SessionRecord, employee_count: int) -> dict:
 def serialize_tasks(session: SessionRecord) -> list[dict]:
     state = session.management_state
     schedule = session.work_schedule
-    assigned = {item.task_id: item for item in state.assignments}
+    task_collaborators = {}
+    for item in state.assignments:
+        if item.task_id not in task_collaborators:
+            task_collaborators[item.task_id] = []
+        task_collaborators[item.task_id].append({
+            "employee_id": item.employee_id,
+            "employee_name": item.employee_name,
+        })
+
     progress_by_id = {item.task_id: item for item in state.task_progress}
     scheduled = {item.task_id: item for item in schedule.scheduled_tasks}
     colors = ["violet", "blue", "green", "orange"]
     rows = []
     for index, task in enumerate(state.plan.tasks):
         progress = progress_by_id[task.task_id]
-        assignment = assigned.get(task.task_id)
-        scheduled_task = scheduled.get(task.task_id)
-        owner = assignment.employee_name if assignment else "Unassigned"
+        collaborators = task_collaborators.get(task.task_id, [])
+        if collaborators:
+            owner = ", ".join(c["employee_name"] for c in collaborators)
+            primary_id = collaborators[0]["employee_id"]
+        else:
+            owner = "Unassigned"
+            primary_id = None
         initials = "".join(part[0] for part in owner.split()[:2]).upper() or "?"
+        scheduled_task = scheduled.get(task.task_id)
         rows.append({
             "task_id": task.task_id,
             "title": task.title,
@@ -277,7 +302,8 @@ def serialize_tasks(session: SessionRecord) -> list[dict]:
             "progress_percent": progress.progress_percent,
             "actual_hours_spent": progress.actual_hours_spent,
             "owner": owner,
-            "employee_id": assignment.employee_id if assignment else None,
+            "employee_id": primary_id,
+            "collaborators": collaborators,
             "initials": initials,
             "color": colors[index % len(colors)],
             "start_week": scheduled_task.start_week if scheduled_task else None,
@@ -336,21 +362,39 @@ def _progress_chart(state, schedule: WorkSchedule) -> list[dict]:
     total_hours = state.plan.total_estimated_hours or 1
     max_week = _max_week(schedule) or 1
     weeks = max(max_week, 1)
+
+    # Deduplicate scheduled tasks by task_id to prevent double-counting
+    scheduled_by_task = {}
+    for scheduled in schedule.scheduled_tasks:
+        if scheduled.task_id not in scheduled_by_task:
+            scheduled_by_task[scheduled.task_id] = {
+                "start_week": scheduled.start_week,
+                "completion_week": scheduled.completion_week,
+            }
+        else:
+            scheduled_by_task[scheduled.task_id]["start_week"] = min(
+                scheduled_by_task[scheduled.task_id]["start_week"], scheduled.start_week
+            )
+            scheduled_by_task[scheduled.task_id]["completion_week"] = max(
+                scheduled_by_task[scheduled.task_id]["completion_week"], scheduled.completion_week
+            )
+
     points = []
     for week in range(1, weeks + 1):
         planned_hours = 0.0
         actual_hours = 0.0
-        for scheduled in schedule.scheduled_tasks:
-            task = tasks.get(scheduled.task_id)
+        for task_id, sched in scheduled_by_task.items():
+            task = tasks.get(task_id)
             if task is None:
                 continue
-            if scheduled.completion_week <= week:
+            if sched["completion_week"] <= week:
                 planned_hours += task.estimated_hours
-            if scheduled.start_week <= week:
-                item = progress[scheduled.task_id]
-                actual_hours += (
-                    task.estimated_hours * item.progress_percent / 100
-                )
+            if sched["start_week"] <= week:
+                item = progress.get(task_id)
+                if item:
+                    actual_hours += (
+                        task.estimated_hours * item.progress_percent / 100
+                    )
         points.append({
             "week": f"W{week}",
             "planned": round(planned_hours / total_hours * 100, 1),

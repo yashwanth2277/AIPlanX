@@ -12,7 +12,12 @@ from utils.project_management_engine import (
 from utils.schedule_impact_engine import calculate_schedule_impact
 from utils.resource_rescheduler import reschedule_work_schedule
 from utils.management_report_generator import generate_management_report
-from utils.reassignment_engine import reassign_task
+from utils.reassignment_engine import (
+    reassign_task,
+    add_collaborator,
+    remove_collaborator,
+)
+from schemas.work_schedule import ScheduledTask
 from agents.management_ai import generate_management_insights
 
 def initialize_management_node(
@@ -299,6 +304,122 @@ def reassign_task_node(
     }
 
 
+def add_collaborator_node(
+    state: ManagementWorkflowState,
+) -> dict:
+    """Add a collaborator to a task and update the work schedule."""
+
+    management_state = state["management_state"]
+    employees = state["employees"]
+    task_id = state.get("task_id") if state.get("task_id") is not None else state.get("reassign_task_id")
+    new_employee_id = state.get("new_employee_id") or state.get("employee_id")
+    reason = state.get("reason") or state.get("reassignment_reason") or "Collaborator added"
+
+    roster = EmployeeRoster(employees=employees)
+
+    updated_state = add_collaborator(
+        state=management_state,
+        roster=roster,
+        task_id=task_id,
+        employee_id=new_employee_id,
+        reason=reason,
+    )
+
+    schedule = state.get("work_schedule")
+    if schedule is None:
+        return {"management_state": updated_state}
+
+    employee_by_id = {
+        employee.employee_id: employee
+        for employee in employees
+    }
+    collaborator = employee_by_id.get(new_employee_id)
+    if collaborator is None:
+        return {"management_state": updated_state}
+
+    scheduled_task = next(
+        (
+            task
+            for task in schedule.scheduled_tasks
+            if task.task_id == task_id
+        ),
+        None,
+    )
+
+    if scheduled_task is None:
+        return {"management_state": updated_state}
+
+    already_scheduled = any(
+        t.task_id == task_id and t.employee_id == new_employee_id
+        for t in schedule.scheduled_tasks
+    )
+    if already_scheduled:
+        return {"management_state": updated_state}
+
+    new_scheduled_task = ScheduledTask(
+        task_id=task_id,
+        task_title=scheduled_task.task_title,
+        employee_id=collaborator.employee_id,
+        employee_name=collaborator.employee_name,
+        total_estimated_hours=scheduled_task.total_estimated_hours,
+        weekly_allocations=scheduled_task.weekly_allocations,
+        start_week=scheduled_task.start_week,
+        completion_week=scheduled_task.completion_week,
+        assignment_reason=f"Collaborator: {reason.strip()}",
+    )
+
+    updated_schedule = schedule.model_copy(
+        update={
+            "scheduled_tasks": [
+                *schedule.scheduled_tasks,
+                new_scheduled_task,
+            ]
+        }
+    )
+
+    return {
+        "management_state": updated_state,
+        "work_schedule": updated_schedule,
+    }
+
+
+def remove_collaborator_node(
+    state: ManagementWorkflowState,
+) -> dict:
+    """Remove a collaborator from a task and update the work schedule."""
+
+    management_state = state["management_state"]
+    task_id = state.get("task_id") if state.get("task_id") is not None else state.get("reassign_task_id")
+    employee_id = state.get("employee_id") or state.get("new_employee_id")
+    reason = state.get("reason") or "Collaborator removed"
+
+    updated_state = remove_collaborator(
+        state=management_state,
+        task_id=task_id,
+        employee_id=employee_id,
+        reason=reason,
+    )
+
+    schedule = state.get("work_schedule")
+    if schedule is None:
+        return {"management_state": updated_state}
+
+    updated_scheduled_tasks = [
+        task
+        for task in schedule.scheduled_tasks
+        if not (task.task_id == task_id and task.employee_id == employee_id)
+    ]
+
+    updated_schedule = schedule.model_copy(
+        update={"scheduled_tasks": updated_scheduled_tasks}
+    )
+
+    return {
+        "management_state": updated_state,
+        "work_schedule": updated_schedule,
+    }
+
+
 
 def generate_management_report_node(
     state: ManagementWorkflowState,
@@ -346,6 +467,8 @@ def route_management_request(
         "analyze_delay": "analyze_delay",
         "generate_report": "generate_management_report",
         "reassign_task": "reassign_task",
+        "add_collaborator": "add_collaborator",
+        "remove_collaborator": "remove_collaborator",
     }
 
     if action not in routes:
@@ -386,6 +509,14 @@ def build_management_workflow():
         "reassign_task",
         reassign_task_node,
     )
+    graph.add_node(
+        "add_collaborator",
+        add_collaborator_node,
+    )
+    graph.add_node(
+        "remove_collaborator",
+        remove_collaborator_node,
+    )
 
     graph.add_conditional_edges(
         START,
@@ -397,6 +528,8 @@ def build_management_workflow():
             "analyze_delay": "analyze_delay",
             "generate_management_report": "generate_management_report",
             "reassign_task": "reassign_task",
+            "add_collaborator": "add_collaborator",
+            "remove_collaborator": "remove_collaborator",
         },
     )
 
@@ -406,5 +539,7 @@ def build_management_workflow():
     graph.add_edge("analyze_delay", END)
     graph.add_edge("generate_management_report", END)
     graph.add_edge("reassign_task", END)
+    graph.add_edge("add_collaborator", END)
+    graph.add_edge("remove_collaborator", END)
 
     return graph.compile()

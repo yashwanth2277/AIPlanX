@@ -70,6 +70,11 @@ class JsonFileStore:
             return []
         return parse_employee_csv(self.employee_path).employees
 
+    def list_effective_employees(
+        self, project_id: int | None = None
+    ) -> list[Employee]:
+        return self.list_employees()
+
     def replace_employees(self, employees: list[Employee]) -> None:
         raise NotImplementedError(
             "JSON store keeps employees in CSV; update employees.csv instead."
@@ -131,6 +136,7 @@ class JsonFileStore:
             summary=summary,
             description=description,
             created_at=existing.created_at if existing else now,
+            updated_at=now,
             final_report=final_report,
             team_workflow=team_workflow,
         )
@@ -141,6 +147,34 @@ class JsonFileStore:
                 encoding="utf-8",
             )
         return record
+
+    def update_project(
+        self,
+        project_id: int,
+        *,
+        name: str | None = None,
+        summary: str | None = None,
+        description: str | None = None,
+    ) -> ProjectRecord:
+        record = self.get_project(project_id)
+        now = datetime.now(timezone.utc)
+        updated = record.model_copy(
+            update={
+                **({"name": name} if name is not None else {}),
+                **({"summary": summary} if summary is not None else {}),
+                **({"description": description} if description is not None else {}),
+                "updated_at": now,
+            }
+        )
+        path = self._project_path(project_id)
+        path.write_text(updated.model_dump_json(indent=2), encoding="utf-8")
+        return updated
+
+    def delete_project(self, project_id: int) -> None:
+        path = self._project_path(project_id)
+        if not path.is_file():
+            raise FileNotFoundError(f"Project {project_id} not found")
+        path.unlink()
 
     def list_sessions(self) -> list[SessionSummary]:
         summaries = []

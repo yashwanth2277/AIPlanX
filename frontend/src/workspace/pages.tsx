@@ -1,7 +1,9 @@
 import { useEffect, useId, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { api, type Overview, type TaskActivity, type TaskRow } from '../api'
+import { ChevronDown, ChevronRight, Pencil, Trash2, UserPlus } from 'lucide-react'
+import { api, type Overview, type TaskActivity, type TaskRow, type TeamMember } from '../api'
+import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -10,9 +12,12 @@ import { ProgressBar, ProgressRing } from '../components/ui/ProgressBar'
 import { Select } from '../components/ui/Select'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { DataTable, Td, Th, Tr } from '../components/ui/Table'
+import { useToast } from '../components/ui/useToast'
+import { cn } from '../lib/cn'
 import { errorMessage, formatWhen } from '../lib/format'
 import { workspaceBase } from '../navigation'
 import { useTheme } from '../theme/useTheme'
+import { AddTeamMemberDialog, DeleteTeamMemberDialog, EditTeamMemberDialog } from './TeamMemberDialogs'
 import { useWorkspace } from './useWorkspace'
 
 function useSection(segment: string): string {
@@ -236,7 +241,14 @@ export function TasksPage() {
               {tasks.map((task) => (
                 <Tr key={task.task_id} data-clickable selected={workspace.selectedTask?.task_id === task.task_id} onClick={() => workspace.selectTask(task)}>
                   <Td><strong>{task.title}</strong><p className="ax-hint">{task.priority} priority</p></Td>
-                  <Td>{task.owner}</Td>
+                  <Td>
+                    <div>{task.owner}</div>
+                    {task.collaborators && task.collaborators.length > 1 && (
+                      <span className="ax-hint" style={{ fontSize: '0.75rem' }}>
+                        {task.collaborators.length} collaborators
+                      </span>
+                    )}
+                  </Td>
                   <Td><StatusBadge label={task.status_label} /></Td>
                   <Td>{Math.round(task.progress_percent)}%</Td>
                   <Td>{task.due}</Td>
@@ -251,19 +263,129 @@ export function TasksPage() {
   )
 }
 
+const SKILL_ALIASES: Record<string, string> = {
+  postgres: 'postgresql',
+  postgresql: 'postgresql',
+  js: 'javascript',
+  javascript: 'javascript',
+  py: 'python',
+  python: 'python',
+  'react.js': 'react',
+  reactjs: 'react',
+  react: 'react',
+  'node.js': 'nodejs',
+  nodejs: 'nodejs',
+}
+
+function normalizeSkill(skill: string): string {
+  const s = skill.trim().toLowerCase()
+  return SKILL_ALIASES[s] || s
+}
+
+function calculateSkillMatch(candidateSkills: string[], requiredSkills: string[]): { qualifies: boolean; percent: number } {
+  const req = requiredSkills.map(normalizeSkill).filter(Boolean)
+  if (req.length === 0) return { qualifies: true, percent: 100 }
+  const cand = new Set(candidateSkills.map(normalizeSkill).filter(Boolean))
+  const matched = req.filter((s) => cand.has(s)).length
+  const ratio = matched / req.length
+  return { qualifies: ratio >= 0.5, percent: Math.round(ratio * 100) }
+}
+
 function TaskEditor() {
   const {
     selectedTask, employees, progressPercent, taskStatus, actualHours, delayHours, delayReason, delayWeeks,
     reassignId, reassignReason, setProgressPercent, setTaskStatus, setActualHours, setDelayHours, setDelayReason,
     setDelayWeeks, setReassignId, setReassignReason, saveProgress, saveDelay, runDelayAnalysis, saveReassign,
+    addCollaborator, removeCollaborator, actionError, setActionError,
   } = useWorkspace()
+
+  const [collabId, setCollabId] = useState('')
+  const [collabReason, setCollabReason] = useState('Collaborator added')
+  const [addingCollab, setAddingCollab] = useState(false)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+
   if (!selectedTask) return <Card><p className="ax-hint">Select a task to update progress, record a delay, or reassign it.</p></Card>
+
+  const collaborators = selectedTask.collaborators && selectedTask.collaborators.length > 0
+    ? selectedTask.collaborators
+    : selectedTask.employee_id
+      ? [{ employee_id: selectedTask.employee_id, employee_name: selectedTask.owner }]
+      : []
+
+  const assignedEmpIds = new Set(
+    collaborators.flatMap((c) => [
+      c.employee_id,
+      c.employee_id.replace(/^TM/, ''),
+      c.employee_name.toLowerCase(),
+    ])
+  )
+  const availableForCollab = employees.filter(
+    (e) =>
+      !assignedEmpIds.has(e.employee_id) &&
+      !assignedEmpIds.has(e.employee_id.replace(/^TM/, '')) &&
+      !assignedEmpIds.has(e.employee_name.toLowerCase())
+  )
+
+  const handleAddCollaborator = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!collabId) return
+    setAddingCollab(true)
+    try {
+      await addCollaborator(collabId, collabReason)
+      setCollabId('')
+    } catch {
+      // Handled in WorkspaceProvider
+    } finally {
+      setAddingCollab(false)
+    }
+  }
+
   return (
     <Card className="ax-stack">
       <div>
         <h2>{selectedTask.title}</h2>
         <p className="ax-hint">{selectedTask.description}</p>
+        {selectedTask.required_skills && selectedTask.required_skills.length > 0 && (
+          <p className="ax-hint" style={{ marginTop: 4 }}>
+            <strong>Required skills:</strong> {selectedTask.required_skills.join(', ')}
+          </p>
+        )}
       </div>
+
+      {actionError && (
+        <div
+          role="alert"
+          style={{
+            padding: '8px 12px',
+            borderRadius: 6,
+            background: 'var(--ax-danger-surface, rgba(239, 68, 68, 0.15))',
+            color: 'var(--ax-danger-text, #f87171)',
+            border: '1px solid var(--ax-danger-border, #dc2626)',
+            fontSize: '0.875rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <span>{actionError}</span>
+          <button
+            type="button"
+            onClick={() => setActionError('')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'inherit',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              padding: '0 4px',
+            }}
+            title="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <form className="ax-stack" onSubmit={saveProgress}>
         <div className="ax-form-grid">
           <Select label="Status" value={taskStatus} onChange={(event) => setTaskStatus(event.target.value)}>
@@ -277,6 +399,7 @@ function TaskEditor() {
         </div>
         <div><Button type="submit">Save progress</Button></div>
       </form>
+
       <form className="ax-stack" onSubmit={saveDelay}>
         <div className="ax-form-grid">
           <Input label="Delay hours" type="number" min={0.1} step="0.5" value={delayHours} onChange={(event) => setDelayHours(event.target.value)} />
@@ -284,69 +407,497 @@ function TaskEditor() {
         </div>
         <div><Button type="submit" variant="secondary">Record delay</Button></div>
       </form>
+
       <form className="ax-stack" onSubmit={runDelayAnalysis}>
         <Input label="Analyze delay (weeks)" type="number" min={1} max={52} value={delayWeeks} onChange={(event) => setDelayWeeks(event.target.value)} />
         <div><Button type="submit" variant="secondary">Analyze schedule impact</Button></div>
       </form>
-      <form className="ax-stack" onSubmit={saveReassign}>
-        <Select label="Reassign to" value={reassignId} onChange={(event) => setReassignId(event.target.value)}>
-          {employees.length === 0 && <option value="">No employees returned</option>}
-          {employees.map((employee) => (
-            <option key={employee.employee_id} value={employee.employee_id}>{employee.employee_name} · {employee.role}</option>
-          ))}
+
+      {/* Assignees & Collaborators Section */}
+      <div className="ax-stack" style={{ gap: 8, paddingTop: 8, borderTop: '1px solid var(--ax-border, #333)' }}>
+        <h3 style={{ fontSize: '0.95rem', fontWeight: 600, margin: 0 }}>Assignees & Collaborators</h3>
+        {collaborators.length === 0 ? (
+          <p className="ax-hint">No team members currently assigned.</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {collaborators.map((c) => {
+              const empInfo = employees.find((e) => e.employee_id === c.employee_id)
+              const isProjectTeam = c.employee_id.startsWith('TM')
+              return (
+                <div
+                  key={c.employee_id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    background: 'var(--ax-surface-raised, rgba(255,255,255,0.05))',
+                    border: '1px solid var(--ax-border, rgba(255,255,255,0.1))',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong>{c.employee_name}</strong>
+                    {empInfo && <span className="ax-hint" style={{ fontSize: '0.85rem' }}>{empInfo.role}</span>}
+                    <span className={cn('ax-badge', isProjectTeam ? 'ax-badge-accent' : 'ax-badge-neutral')}>
+                      <i />
+                      {isProjectTeam ? 'Project Team' : 'Planning Roster'}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={removingId === c.employee_id}
+                    onClick={async () => {
+                      setRemovingId(c.employee_id)
+                      try {
+                        await removeCollaborator(c.employee_id)
+                      } catch {
+                        // Handled
+                      } finally {
+                        setRemovingId(null)
+                      }
+                    }}
+                    title="Remove collaborator"
+                  >
+                    {removingId === c.employee_id ? 'Removing…' : 'Remove'}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Add Collaborator Form */}
+      <form className="ax-stack" onSubmit={handleAddCollaborator} style={{ gap: 8 }}>
+        <Select
+          label="Add collaborator"
+          value={collabId}
+          onChange={(event) => setCollabId(event.target.value)}
+          hint={
+            selectedTask.required_skills?.length
+              ? 'Qualified candidates match ≥ 50% of required skills'
+              : undefined
+          }
+        >
+          <option value="">Select team member to collaborate…</option>
+          {availableForCollab.map((emp) => {
+            const match = calculateSkillMatch(emp.skills, selectedTask.required_skills || [])
+            const isProjectTeam = emp.employee_id.startsWith('TM')
+            return (
+              <option key={emp.employee_id} value={emp.employee_id}>
+                {emp.employee_name} · {emp.role} {isProjectTeam ? '★ Project Team' : ''} ({match.percent}% skills{match.qualifies ? ' - Qualified' : ''})
+              </option>
+            )
+          })}
         </Select>
-        <Input label="Reason" value={reassignReason} required onChange={(event) => setReassignReason(event.target.value)} />
-        <div><Button type="submit" variant="secondary" disabled={!reassignId}>Reassign task</Button></div>
+        <Input
+          label="Collaboration reason"
+          value={collabReason}
+          onChange={(event) => setCollabReason(event.target.value)}
+          placeholder="Reason for adding collaborator"
+        />
+        <div>
+          <Button type="submit" variant="secondary" disabled={!collabId || addingCollab}>
+            {addingCollab ? 'Adding…' : 'Add collaborator'}
+          </Button>
+        </div>
+      </form>
+
+      {/* Reassign Task Form */}
+      <form className="ax-stack" onSubmit={saveReassign} style={{ gap: 8, paddingTop: 8, borderTop: '1px solid var(--ax-border, #333)' }}>
+        <Select
+          label="Reassign primary owner"
+          value={reassignId}
+          onChange={(event) => setReassignId(event.target.value)}
+        >
+          {employees.length === 0 && <option value="">No employees available</option>}
+          {employees.map((employee) => {
+            const match = calculateSkillMatch(employee.skills, selectedTask.required_skills || [])
+            const isProjectTeam = employee.employee_id.startsWith('TM')
+            const isCurrent = employee.employee_id === selectedTask.employee_id
+            return (
+              <option key={employee.employee_id} value={employee.employee_id}>
+                {employee.employee_name} · {employee.role} {isProjectTeam ? '★ Project Team' : ''} ({match.percent}% skills{match.qualifies ? ' - Qualified' : ''}){isCurrent ? ' [Current Assignee]' : ''}
+              </option>
+            )
+          })}
+        </Select>
+        <Input
+          label="Reassignment reason"
+          value={reassignReason}
+          required
+          onChange={(event) => setReassignReason(event.target.value)}
+        />
+        <div>
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={!reassignId || reassignId === selectedTask.employee_id}
+          >
+            Reassign task
+          </Button>
+        </div>
       </form>
     </Card>
   )
 }
 
 export function TeamPage() {
-  const { employees, schedule, sessionName } = useWorkspace()
+  const { projectId, project, employees, schedule, sessionName, tasks, reload } = useWorkspace()
+  const toast = useToast()
+
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [loadingMembers, setLoadingMembers] = useState(false)
+  const [membersError, setMembersError] = useState('')
+  const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
+  const [deletingMember, setDeletingMember] = useState<TeamMember | null>(null)
+  const [showRoster, setShowRoster] = useState(false)
+
+  useEffect(() => {
+    if (projectId == null) return
+    let cancelled = false
+
+    async function load() {
+      setLoadingMembers(true)
+      setMembersError('')
+      try {
+        const res = await api.listTeamMembers(projectId!)
+        if (!cancelled) {
+          setTeamMembers(res.members)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setMembersError(errorMessage(err, 'Failed to load project team members'))
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingMembers(false)
+        }
+      }
+    }
+
+    void load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [projectId])
+
+  const displayMembers = projectId == null ? [] : teamMembers
+
+  function handleMemberAdded(newMember: TeamMember) {
+    setTeamMembers((prev) => [...prev, newMember])
+    reload()
+    toast({ title: `${newMember.name} added to project team`, tone: 'success' })
+  }
+
+  function handleMemberUpdated(updatedMember: TeamMember) {
+    setTeamMembers((prev) =>
+      prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
+    )
+    reload()
+    toast({ title: `${updatedMember.name} updated`, tone: 'success' })
+  }
+
+  function handleMemberDeleted(deletedId: number) {
+    setTeamMembers((prev) => prev.filter((m) => m.id !== deletedId))
+    reload()
+    toast({ title: 'Team member removed', tone: 'success' })
+  }
+
   return (
     <div className="ax-stack">
-      {employees.length === 0 ? (
-        <EmptyState title="No employees returned" message="The scheduler roster from /api/employees is empty." />
-      ) : (
-        <div className="ax-card-grid">
-          {employees.map((employee) => (
-            <Card key={employee.employee_id} className="ax-stack">
-              <div>
-                <h2>{employee.employee_name}</h2>
-                <p className="ax-hint">{employee.role} · {employee.experience} years · {employee.weekly_capacity_hours}h / week</p>
-              </div>
-              <ProgressBar value={employee.current_workload_percent} label="Workload" />
-              <div>{employee.skills.map((skill) => <span className="ax-skill" key={skill}>{skill}</span>)}</div>
-            </Card>
-          ))}
+      {/* 1. Project-scoped Team Members (System B) */}
+      <Card className="ax-stack">
+        <div className="ax-spread">
+          <div>
+            <span className="ax-kicker">Project Workspace</span>
+            <h2 style={{ marginTop: 4 }}>Project Team</h2>
+            <p className="ax-hint">
+              {project?.name
+                ? `Team members allocated to ${project.name}.`
+                : 'Team members allocated specifically to this project.'}
+            </p>
+          </div>
+          {projectId != null && (
+            <Button onClick={() => setAddDialogOpen(true)}>
+              <UserPlus size={16} /> Add Team Member
+            </Button>
+          )}
         </div>
-      )}
+
+        {membersError && (
+          <Banner onDismiss={() => setMembersError('')}>
+            {membersError}
+          </Banner>
+        )}
+
+        {loadingMembers ? (
+          <p className="ax-spinner">
+            <span className="ax-spinner-dot" /> Loading project team members…
+          </p>
+        ) : displayMembers.length === 0 ? (
+          <EmptyState
+            title="No project team members"
+            message={
+              projectId != null
+                ? 'No team members have been allocated to this project yet. Add employees or interns to begin tracking project staff.'
+                : 'Select a project to manage its team members.'
+            }
+            action={
+              projectId != null ? (
+                <Button onClick={() => setAddDialogOpen(true)}>
+                  <UserPlus size={16} /> Add Team Member
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
+          <div className="ax-card-grid" style={{ marginTop: 8 }}>
+            {displayMembers.map((member) => {
+              const memberTasks = schedule.filter(
+                (s) =>
+                  s.employee_name.toLowerCase() === member.name.toLowerCase() ||
+                  s.employee_id === `TM${member.id}` ||
+                  s.employee_id === String(member.id),
+              )
+              const totalHours = memberTasks.reduce((sum, t) => sum + t.total_estimated_hours, 0)
+              return (
+                <Card
+                  key={member.id}
+                  className="ax-stack"
+                  style={{ background: 'var(--ax-surface-raised)' }}
+                >
+                  <div className="ax-spread">
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>
+                        {member.name}
+                      </h3>
+                      <p className="ax-hint" style={{ marginTop: 2 }}>
+                        {member.role}
+                        {member.allocation_days != null
+                          ? ` · ${member.allocation_days} days allocated`
+                          : ''}
+                        {memberTasks.length > 0
+                          ? ` · ${memberTasks.length} ${memberTasks.length === 1 ? 'task' : 'tasks'} (${totalHours}h)`
+                          : ' · No tasks assigned'}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span
+                        className={cn(
+                          'ax-badge',
+                          member.member_type === 'intern'
+                            ? 'ax-badge-warning'
+                            : 'ax-badge-accent',
+                        )}
+                      >
+                        <i />
+                        {member.member_type === 'intern' ? 'Intern' : 'Employee'}
+                      </span>
+                      <button
+                        type="button"
+                        className="ax-btn ax-btn-ghost ax-btn-sm"
+                        title="Edit member"
+                        onClick={() => setEditingMember(member)}
+                        style={{
+                          padding: '4px 6px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="ax-btn ax-btn-ghost ax-btn-sm"
+                        title="Remove member"
+                        onClick={() => setDeletingMember(member)}
+                        style={{
+                          color: 'var(--ax-danger)',
+                          padding: '4px 6px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {memberTasks.length > 0 && (
+                    <ProgressBar
+                      value={Math.min(100, Math.round((totalHours / (member.weekly_capacity_hours || 40)) * 100))}
+                      label="Assigned load"
+                    />
+                  )}
+
+                  {member.skills && member.skills.length > 0 && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '4px',
+                        marginTop: 4,
+                      }}
+                    >
+                      {member.skills.map((skill) => (
+                        <span className="ax-skill" key={skill} style={{ margin: 0 }}>
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* 2. Planning Roster Section (System A - Global) */}
+      <Card className="ax-stack">
+        <div className="ax-spread">
+          <div>
+            <span className="ax-kicker">AI Scheduling</span>
+            <h2 style={{ marginTop: 4 }}>Planning Roster</h2>
+            <p className="ax-hint">
+              Global employee pool used by AI planning and work scheduler ({employees.length} available).
+            </p>
+          </div>
+          <Button variant="ghost" onClick={() => setShowRoster((v) => !v)}>
+            {showRoster ? (
+              <>
+                <ChevronDown size={16} /> Hide roster
+              </>
+            ) : (
+              <>
+                <ChevronRight size={16} /> Show roster
+              </>
+            )}
+          </Button>
+        </div>
+
+        {showRoster && (
+          <div style={{ marginTop: 8 }}>
+            {employees.length === 0 ? (
+              <EmptyState
+                title="No employees returned"
+                message="The scheduler roster from /api/employees is empty."
+              />
+            ) : (
+              <div className="ax-card-grid">
+                {employees.map((employee) => (
+                  <Card
+                    key={employee.employee_id}
+                    className="ax-stack"
+                    style={{ background: 'var(--ax-surface-raised)' }}
+                  >
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
+                        {employee.employee_name}
+                      </h3>
+                      <p className="ax-hint">
+                        {employee.role} · {employee.experience} years ·{' '}
+                        {employee.weekly_capacity_hours}h / week
+                      </p>
+                    </div>
+                    <ProgressBar
+                      value={employee.current_workload_percent}
+                      label="Workload"
+                    />
+                    <div>
+                      {employee.skills.map((skill) => (
+                        <span className="ax-skill" key={skill}>
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
+      {/* 3. Work schedule (Session-based) */}
       <Card>
         <h2>Work schedule</h2>
-        <p className="ax-hint">{sessionName ? `Allocated weeks for session ${sessionName}.` : 'A session is required before this project has a schedule.'}</p>
-        {schedule.length === 0 ? <p className="ax-hint">No scheduled tasks were returned.</p> : (
+        <p className="ax-hint">
+          {sessionName
+            ? `Allocated weeks for session ${sessionName}.`
+            : 'A session is required before this project has a schedule.'}
+        </p>
+        {schedule.length === 0 ? (
+          <p className="ax-hint">No scheduled tasks were returned.</p>
+        ) : (
           <DataTable>
-            <thead><tr><Th>Task</Th><Th>Owner</Th><Th>Hours</Th><Th>Weeks</Th></tr></thead>
+            <thead>
+              <tr>
+                <Th>Task</Th>
+                <Th>Owner</Th>
+                <Th>Hours</Th>
+                <Th>Weeks</Th>
+              </tr>
+            </thead>
             <tbody>
               {schedule.map((item) => (
                 <Tr key={`${item.task_id}-${item.employee_id}`}>
                   <Td>{item.task_title}</Td>
                   <Td>{item.employee_name}</Td>
                   <Td>{item.total_estimated_hours}</Td>
-                  <Td>W{item.start_week}–W{item.completion_week}</Td>
+                  <Td>
+                    W{item.start_week}–W{item.completion_week}
+                  </Td>
                 </Tr>
               ))}
             </tbody>
           </DataTable>
         )}
       </Card>
+
+      {/* Dialogs */}
+      {projectId != null && (
+        <AddTeamMemberDialog
+          open={addDialogOpen}
+          projectId={projectId}
+          tasks={tasks}
+          sessionName={sessionName}
+          onClose={() => setAddDialogOpen(false)}
+          onAdded={handleMemberAdded}
+        />
+      )}
+
+      {projectId != null && editingMember != null && (
+        <EditTeamMemberDialog
+          member={editingMember}
+          projectId={projectId}
+          tasks={tasks}
+          sessionName={sessionName}
+          onClose={() => setEditingMember(null)}
+          onUpdated={handleMemberUpdated}
+        />
+      )}
+
+      {projectId != null && deletingMember != null && (
+        <DeleteTeamMemberDialog
+          member={deletingMember}
+          projectId={projectId}
+          onClose={() => setDeletingMember(null)}
+          onDeleted={handleMemberDeleted}
+        />
+      )}
     </div>
   )
 }
 
 export function TimelinePage() {
-  const { overview, schedule, sessionName } = useWorkspace()
+  const { overview, schedule, sessionName, employees } = useWorkspace()
   if (!sessionName || !overview) {
     return <NoSession detail="Planned and actual progress is stored on the management session, not on the project id alone." />
   }
@@ -376,12 +927,54 @@ export function TimelinePage() {
           </DataTable>
         )}
       </Card>
+      <Card>
+        <h2>Team allocations & commitments</h2>
+        <p className="ax-hint">Task assignments and planned commitments across project members.</p>
+        {employees.length === 0 ? (
+          <p className="ax-hint">No team members available for this project.</p>
+        ) : (
+          <DataTable>
+            <thead><tr><Th>Member</Th><Th>Role</Th><Th>Team</Th><Th>Tasks</Th><Th>Total hours</Th><Th>Weeks</Th></tr></thead>
+            <tbody>
+              {employees.map((emp) => {
+                const empTasks = schedule.filter(
+                  (s) =>
+                    s.employee_id === emp.employee_id ||
+                    s.employee_name.toLowerCase() === emp.employee_name.toLowerCase(),
+                )
+                const hours = empTasks.reduce((acc, t) => acc + t.total_estimated_hours, 0)
+                const startWeeks = empTasks.map((t) => t.start_week)
+                const endWeeks = empTasks.map((t) => t.completion_week)
+                const weekRange = empTasks.length > 0
+                  ? `W${Math.min(...startWeeks)}–W${Math.max(...endWeeks)}`
+                  : '—'
+                const isProjectTeam = emp.employee_id.startsWith('TM')
+                return (
+                  <Tr key={emp.employee_id}>
+                    <Td><strong>{emp.employee_name}</strong></Td>
+                    <Td>{emp.role}</Td>
+                    <Td>
+                      <span className={cn('ax-badge', isProjectTeam ? 'ax-badge-accent' : 'ax-badge-neutral')}>
+                        <i />
+                        {isProjectTeam ? 'Project Team' : 'Planning Roster'}
+                      </span>
+                    </Td>
+                    <Td>{empTasks.length > 0 ? `${empTasks.length} assigned` : 'Unassigned'}</Td>
+                    <Td>{hours > 0 ? `${hours}h` : '0h'}</Td>
+                    <Td>{weekRange}</Td>
+                  </Tr>
+                )
+              })}
+            </tbody>
+          </DataTable>
+        )}
+      </Card>
     </div>
   )
 }
 
 export function ReportsPage() {
-  const { report, sessionName } = useWorkspace()
+  const { report, sessionName, employees, schedule } = useWorkspace()
   if (!sessionName) return <NoSession detail="Reports are generated from the management session." />
   if (!report) return <EmptyState title="No report" message="This session did not return a management report." />
   const management = report.management_report
@@ -407,6 +1000,27 @@ export function ReportsPage() {
           {management.task_delays.map((item) => (
             <li key={`${item.task_id}-${item.reason}`}>{item.task_title}: {item.delay_hours}h · {item.reason}</li>
           ))}
+        </ul>
+      </Card>
+      <Card className="ax-stack">
+        <h2>Team allocation</h2>
+        <p className="ax-hint">{employees.length} team members available on this project</p>
+        <ul className="ax-list">
+          {employees.map((emp) => {
+            const empTasks = schedule.filter(
+              (s) =>
+                s.employee_id === emp.employee_id ||
+                s.employee_name.toLowerCase() === emp.employee_name.toLowerCase(),
+            )
+            const hours = empTasks.reduce((acc, t) => acc + t.total_estimated_hours, 0)
+            const isProjectTeam = emp.employee_id.startsWith('TM')
+            return (
+              <li key={emp.employee_id}>
+                <strong>{emp.employee_name}</strong> ({emp.role} · {isProjectTeam ? 'Project Team' : 'Planning Roster'}):{' '}
+                {empTasks.length > 0 ? `${empTasks.length} tasks (${hours}h)` : 'Available (unassigned)'}
+              </li>
+            )
+          })}
         </ul>
       </Card>
       <Card className="ax-stack">

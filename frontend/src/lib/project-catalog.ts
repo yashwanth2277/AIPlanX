@@ -9,6 +9,7 @@ export type ProjectCardModel = {
   sessionName: string | null
   name: string
   summary: string
+  description: string
   createdAt: string
   updatedAt: string
   hasReport: boolean
@@ -92,8 +93,9 @@ function cardFromSessions(
     sessionName: primary.name,
     name: project?.name || primary.project_name || primary.name,
     summary: project?.summary || overview?.project.summary || '',
+    description: project?.description || '',
     createdAt: project?.created_at || primary.updated_at,
-    updatedAt: primary.updated_at,
+    updatedAt: project?.updated_at || primary.updated_at,
     hasReport: project?.has_report ?? false,
     sessionCount: sessions.length,
     taskCount: primary.task_count,
@@ -121,8 +123,9 @@ export function buildProjectCards(
         sessionName: null,
         name: project.name || `Project ${project.id}`,
         summary: project.summary,
+        description: project.description || '',
         createdAt: project.created_at,
-        updatedAt: project.created_at,
+        updatedAt: project.updated_at || project.created_at,
         hasReport: project.has_report,
         sessionCount: 0,
         taskCount: null,

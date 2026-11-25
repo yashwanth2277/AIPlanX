@@ -10,11 +10,17 @@ from api.planning import read_job, start_planning_job
 from api.schemas import (
     AnalyzeDelayRequest,
     AssistantAskRequest,
+    CreateProjectRequest,
     CreateSessionRequest,
+    CreateTeamMemberRequest,
+    UpdateTeamMemberRequest,
     DelayRequest,
     PlanRequest,
     ProgressUpdateRequest,
     ReassignRequest,
+    AddCollaboratorRequest,
+    RemoveCollaboratorRequest,
+    UpdateProjectRequest,
 )
 from api.services import (
     build_overview,
@@ -75,11 +81,16 @@ def create_app(store=None) -> FastAPI:
         return {"status": "ok", "store": type(request.app.state.store).__name__}
 
     @app.get("/api/employees")
-    def list_employees(request: Request):
+    def list_employees(request: Request, project_id: int | None = None):
+        store = request.app.state.store
+        if hasattr(store, "list_effective_employees"):
+            employees = store.list_effective_employees(project_id=project_id)
+        else:
+            employees = store.list_employees()
         return {
             "employees": [
                 employee.model_dump(mode="json")
-                for employee in request.app.state.store.list_employees()
+                for employee in employees
             ]
         }
 
@@ -91,12 +102,26 @@ def create_app(store=None) -> FastAPI:
                     "id": project.id,
                     "name": project.name,
                     "summary": project.summary,
+                    "description": project.description,
                     "created_at": project.created_at,
+                    "updated_at": project.updated_at or project.created_at,
                     "has_report": project.final_report is not None,
                 }
                 for project in request.app.state.store.list_projects()
             ]
         }
+
+    @app.post("/api/projects", status_code=201)
+    def create_project(body: CreateProjectRequest, request: Request):
+        store = request.app.state.store
+        record = store.save_project(
+            name=body.name,
+            summary=body.summary,
+            description=body.description,
+        )
+        response = record.model_dump(mode="json")
+        response["has_report"] = record.final_report is not None
+        return response
 
     @app.post("/api/projects/plan", status_code=202)
     def plan_project(body: PlanRequest, request: Request):
@@ -118,7 +143,90 @@ def create_app(store=None) -> FastAPI:
     @app.get("/api/projects/{project_id}")
     def get_project(project_id: int, request: Request):
         project = request.app.state.store.get_project(project_id)
-        return project.model_dump(mode="json")
+        response = project.model_dump(mode="json")
+        response["has_report"] = project.final_report is not None
+        return response
+
+    @app.patch("/api/projects/{project_id}")
+    def update_project(
+        project_id: int,
+        body: UpdateProjectRequest,
+        request: Request,
+    ):
+        store = request.app.state.store
+        record = store.update_project(
+            project_id,
+            name=body.name,
+            summary=body.summary,
+            description=body.description,
+        )
+        response = record.model_dump(mode="json")
+        response["has_report"] = record.final_report is not None
+        return response
+
+    @app.delete("/api/projects/{project_id}", status_code=204)
+    def delete_project(project_id: int, request: Request):
+        store = request.app.state.store
+        store.delete_project(project_id)
+        return None
+
+    # ----------------------------------------------------------------------- #
+    # Project-scoped team members (System B)
+    # ----------------------------------------------------------------------- #
+
+    @app.get("/api/projects/{project_id}/members")
+    def list_team_members(project_id: int, request: Request):
+        store = request.app.state.store
+        # Validate project exists
+        store.get_project(project_id)
+        members = store.list_team_members(project_id)
+        return {"members": members}
+
+    @app.post("/api/projects/{project_id}/members", status_code=201)
+    def add_team_member(
+        project_id: int,
+        body: CreateTeamMemberRequest,
+        request: Request,
+    ):
+        store = request.app.state.store
+        member = store.add_team_member(
+            project_id,
+            name=body.name,
+            role=body.role,
+            member_type=body.member_type,
+            skills=body.skills,
+            allocation_days=body.allocation_days,
+            email="",
+        )
+        return member
+
+    @app.delete("/api/projects/{project_id}/members/{member_id}", status_code=204)
+    def delete_team_member(project_id: int, member_id: int, request: Request):
+        store = request.app.state.store
+        # Validate project exists first
+        store.get_project(project_id)
+        store.delete_team_member(member_id, project_id)
+        return None
+
+    @app.put("/api/projects/{project_id}/members/{member_id}")
+    @app.patch("/api/projects/{project_id}/members/{member_id}")
+    def update_team_member(
+        project_id: int,
+        member_id: int,
+        body: UpdateTeamMemberRequest,
+        request: Request,
+    ):
+        store = request.app.state.store
+        store.get_project(project_id)
+        return store.update_team_member(
+            member_id,
+            project_id,
+            name=body.name,
+            role=body.role,
+            member_type=body.member_type,
+            skills=body.skills,
+            allocation_days=body.allocation_days,
+        )
 
     @app.get("/api/projects/{project_id}/report")
     def get_project_report(project_id: int, request: Request):
@@ -163,7 +271,11 @@ def create_app(store=None) -> FastAPI:
     def session_overview(name: str, request: Request):
         store = request.app.state.store
         session = store.get_session(name)
-        return build_overview(session, len(store.list_employees()))
+        if hasattr(store, "list_effective_employees"):
+            employees = store.list_effective_employees(project_id=session.project_id)
+        else:
+            employees = store.list_employees()
+        return build_overview(session, len(employees))
 
     @app.get("/api/sessions/{name}/tasks")
     def session_tasks(name: str, request: Request):
@@ -273,6 +385,42 @@ def create_app(store=None) -> FastAPI:
             },
         )
 
+    @app.post("/api/sessions/{name}/tasks/{task_id}/collaborators")
+    def add_task_collaborator(
+        name: str,
+        task_id: int,
+        body: AddCollaboratorRequest,
+        request: Request,
+    ):
+        return _invoke_management(
+            request,
+            name,
+            {
+                "action": "add_collaborator",
+                "task_id": task_id,
+                "new_employee_id": body.employee_id,
+                "reason": body.reason,
+            },
+        )
+
+    @app.delete("/api/sessions/{name}/tasks/{task_id}/collaborators/{employee_id}")
+    def remove_task_collaborator(
+        name: str,
+        task_id: int,
+        employee_id: str,
+        request: Request,
+    ):
+        return _invoke_management(
+            request,
+            name,
+            {
+                "action": "remove_collaborator",
+                "task_id": task_id,
+                "employee_id": employee_id,
+                "reason": "Collaborator removed",
+            },
+        )
+
     @app.get("/api/sessions/{name}/schedule")
     def session_schedule(name: str, request: Request):
         session = request.app.state.store.get_session(name)
@@ -316,12 +464,16 @@ def create_app(store=None) -> FastAPI:
                 status_code=400,
                 detail="A planning report is required before using the assistant.",
             )
+        if hasattr(store, "list_effective_employees"):
+            employees = store.list_effective_employees(project_id=session.project_id)
+        else:
+            employees = store.list_employees()
         context = build_assistant_context_from_state(
             body.session_name,
             report=report,
             management_state=session.management_state,
             work_schedule=session.work_schedule,
-            employees=store.list_employees(),
+            employees=employees,
         )
         try:
             answer = ask_project_assistant(
@@ -336,11 +488,27 @@ def create_app(store=None) -> FastAPI:
     def _invoke_management(request: Request, name: str, payload: dict):
         store = request.app.state.store
         session = store.get_session(name)
+        if hasattr(store, "list_effective_employees"):
+            employees = store.list_effective_employees(project_id=session.project_id)
+        else:
+            employees = store.list_employees()
+
+        if payload.get("action") in ("reassign_task", "add_collaborator"):
+            raw_id = str(payload.get("new_employee_id", ""))
+            if raw_id and not any(e.employee_id == raw_id for e in employees):
+                if any(e.employee_id == f"TM{raw_id}" for e in employees):
+                    payload["new_employee_id"] = f"TM{raw_id}"
+        elif payload.get("action") == "remove_collaborator":
+            raw_id = str(payload.get("employee_id", ""))
+            if raw_id and not any(e.employee_id == raw_id for e in employees):
+                if any(e.employee_id == f"TM{raw_id}" for e in employees):
+                    payload["employee_id"] = f"TM{raw_id}"
+
         result = request.app.state.management_workflow.invoke(
             {
                 "management_state": session.management_state,
                 "work_schedule": session.work_schedule,
-                "employees": store.list_employees(),
+                "employees": employees,
                 **payload,
             }
         )

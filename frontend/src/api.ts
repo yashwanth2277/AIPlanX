@@ -75,6 +75,11 @@ export type Overview = {
   completion_week: number | null
 }
 
+export type TaskCollaborator = {
+  employee_id: string
+  employee_name: string
+}
+
 export type TaskRow = {
   task_id: number
   title: string
@@ -95,6 +100,7 @@ export type TaskRow = {
   completion_week: number | null
   due: string
   delays: { delay_hours: number; reason: string }[]
+  collaborators?: TaskCollaborator[]
 }
 
 export type TaskActivity = {
@@ -131,6 +137,37 @@ export type Employee = {
   experience: number
   current_workload_percent: number
   weekly_capacity_hours: number
+}
+
+export type TeamMember = {
+  id: number
+  project_id: number
+  name: string
+  role: string
+  member_type: 'employee' | 'intern' | string
+  skills: string[]
+  allocation_days: number | null
+  experience: number
+  weekly_capacity_hours: number
+  current_workload_percent: number
+  created_at: string
+  updated_at: string
+}
+
+export type CreateTeamMemberPayload = {
+  name: string
+  role: string
+  member_type: 'employee' | 'intern'
+  skills: string[]
+  allocation_days: number
+}
+
+export type UpdateTeamMemberPayload = {
+  name?: string
+  role?: string
+  member_type?: 'employee' | 'intern'
+  skills?: string[]
+  allocation_days?: number
 }
 
 export type ScheduledTask = {
@@ -185,13 +222,54 @@ export type ProjectListItem = {
   id: number
   name: string
   summary: string
+  description?: string
   created_at: string
+  updated_at?: string
   has_report: boolean
+}
+
+export type ProjectDetail = {
+  id: number
+  name: string
+  summary: string
+  description: string
+  created_at: string
+  updated_at: string
+  has_report: boolean
+  final_report?: unknown
+  team_workflow?: unknown
+}
+
+export type CreateProjectPayload = {
+  name: string
+  description?: string
+  summary?: string
+}
+
+export type UpdateProjectPayload = {
+  name?: string
+  description?: string
+  summary?: string
 }
 
 export const api = {
   health: () => request<{ status: string; store?: string }>('/api/health'),
   projects: () => request<{ projects: ProjectListItem[] }>('/api/projects'),
+  getProject: (id: number) => request<ProjectDetail>(`/api/projects/${id}`),
+  createProject: (body: CreateProjectPayload) =>
+    request<ProjectDetail>('/api/projects', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updateProject: (id: number, body: UpdateProjectPayload) =>
+    request<ProjectDetail>(`/api/projects/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  deleteProject: (id: number) =>
+    request<void>(`/api/projects/${id}`, {
+      method: 'DELETE',
+    }),
   sessions: () => request<{ sessions: SessionSummary[] }>('/api/sessions'),
   createSession: (name: string, projectId: number) =>
     request<{ name: string }>('/api/sessions', {
@@ -201,7 +279,30 @@ export const api = {
   overview: (name: string) => request<Overview>(`/api/sessions/${name}/overview`),
   tasks: (name: string) => request<{ tasks: TaskRow[] }>(`/api/sessions/${name}/tasks`),
   schedule: (name: string) => request<{ scheduled_tasks: ScheduledTask[]; unscheduled_tasks: unknown[] }>(`/api/sessions/${name}/schedule`),
-  employees: () => request<{ employees: Employee[] }>('/api/employees'),
+  employees: (projectId?: number) =>
+    request<{ employees: Employee[] }>(
+      projectId != null ? `/api/employees?project_id=${projectId}` : '/api/employees',
+    ),
+  listTeamMembers: (projectId: number) =>
+    request<{ members: TeamMember[] }>(`/api/projects/${projectId}/members`),
+  addTeamMember: (projectId: number, body: CreateTeamMemberPayload) =>
+    request<TeamMember>(`/api/projects/${projectId}/members`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updateTeamMember: (
+    projectId: number,
+    memberId: number,
+    body: UpdateTeamMemberPayload,
+  ) =>
+    request<TeamMember>(`/api/projects/${projectId}/members/${memberId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  deleteTeamMember: (projectId: number, memberId: number) =>
+    request<void>(`/api/projects/${projectId}/members/${memberId}`, {
+      method: 'DELETE',
+    }),
   report: (name: string) => request<ManagementReportPayload>(`/api/sessions/${name}/report`),
 
   updateProgress: (
@@ -237,6 +338,15 @@ export const api = {
     request(`/api/sessions/${name}/tasks/${taskId}/reassign`, {
       method: 'POST',
       body: JSON.stringify(body),
+    }),
+  addCollaborator: (name: string, taskId: number, body: { employee_id: string; reason?: string }) =>
+    request(`/api/sessions/${name}/tasks/${taskId}/collaborators`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  removeCollaborator: (name: string, taskId: number, employeeId: string) =>
+    request(`/api/sessions/${name}/tasks/${taskId}/collaborators/${employeeId}`, {
+      method: 'DELETE',
     }),
   askAssistant: (sessionName: string, question: string) =>
     request<{ answer: string }>('/api/assistant/ask', {

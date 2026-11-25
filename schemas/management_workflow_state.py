@@ -53,3 +53,8 @@ class ManagementWorkflowState(TypedDict, total=False):
     update_comment: str
     update_by: str
     update_role: str
+
+    # Collaborators
+    task_id: int
+    employee_id: str
+    reason: str

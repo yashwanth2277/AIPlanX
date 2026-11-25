@@ -19,17 +19,25 @@ export function Dialog({ open, title, description, onClose, children, wide = fal
   useEffect(() => {
     if (!open) return
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    dialogRef.current?.focus()
+    if (!dialogRef.current?.contains(document.activeElement)) {
+      dialogRef.current?.focus()
+    }
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = previousOverflow
+      previouslyFocused?.focus()
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !closeDisabled) onClose()
     }
     document.addEventListener('keydown', onKey)
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.body.style.overflow = previousOverflow
-      previouslyFocused?.focus()
     }
   }, [open, closeDisabled, onClose])
 

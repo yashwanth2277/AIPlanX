@@ -1,23 +1,50 @@
-import { useState, type FormEvent } from 'react'
+import { useCallback, useState, type FormEvent } from 'react'
+import { api } from '../api'
+import { errorMessage } from '../lib/format'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
 import { Dialog } from '../components/ui/Dialog'
 import { Input } from '../components/ui/Input'
 
-export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+type NewProjectDialogProps = {
+  open: boolean
+  onClose: () => void
+  onCreated?: () => void
+}
+
+export function NewProjectDialog({ open, onClose, onCreated }: NewProjectDialogProps) {
   const [name, setName] = useState('')
-  const [notice, setNotice] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  function close() {
+  const close = useCallback(() => {
+    if (loading) return
     setName('')
-    setNotice(false)
+    setError('')
     onClose()
-  }
+  }, [loading, onClose])
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault()
-    if (!name.trim()) return
-    setNotice(true)
+    const trimmed = name.trim()
+    if (!trimmed) {
+      setError('Project name is required')
+      return
+    }
+    if (loading) return
+
+    setLoading(true)
+    setError('')
+    try {
+      await api.createProject({ name: trimmed })
+      setName('')
+      onCreated?.()
+      onClose()
+    } catch (err) {
+      setError(errorMessage(err, 'Failed to create project'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -26,6 +53,7 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
       title="New project"
       description="Start with a name. Planning stays a separate step."
       onClose={close}
+      closeDisabled={loading}
     >
       <form className="ax-stack" onSubmit={submit}>
         <Input
@@ -35,25 +63,24 @@ export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: ()
           required
           maxLength={120}
           placeholder="Campus platform"
+          disabled={loading}
           onChange={(event) => {
             setName(event.target.value)
-            setNotice(false)
+            if (error) setError('')
           }}
         />
-        {notice && (
-          <Banner>
-            <strong>A name is not enough to create a project yet.</strong>
-            <p>
-              The API has no endpoint that stores a project from a name alone. Projects are created
-              only when AI planning runs with a description (`POST /api/projects/plan`). This dialog
-              will not start that job. Open an existing project and use AI Planning Studio when you
-              are ready to generate a plan.
-            </p>
+        {error && (
+          <Banner onDismiss={() => setError('')}>
+            {error}
           </Banner>
         )}
         <div className="ax-dialog-actions">
-          <Button variant="secondary" onClick={close}>Close</Button>
-          <Button type="submit" disabled={!name.trim()}>Continue</Button>
+          <Button variant="secondary" onClick={close} disabled={loading}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={loading || !name.trim()}>
+            {loading ? 'Creating...' : 'Create project'}
+          </Button>
         </div>
       </form>
     </Dialog>

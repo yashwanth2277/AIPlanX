@@ -102,16 +102,31 @@ export function WorkspaceProvider({ children }: { children?: ReactNode }) {
         return
       }
       try {
-        const [projectPayload, sessionPayload, employeePayload] = await Promise.all([
-          api.projects(),
-          api.sessions(),
-          api.employees(),
-        ])
-        if (cancelled) return
+        let savedProject: ProjectListItem | null = null
+        let sessionPayload: { sessions: SessionSummary[] }
+        let employeePayload: { employees: Employee[] }
+
+        if (projectId != null) {
+          const [projectDetail, sessionsRes, employeesRes] = await Promise.all([
+            api.getProject(projectId),
+            api.sessions(),
+            api.employees(projectId),
+          ])
+          if (cancelled) return
+          savedProject = projectDetail
+          sessionPayload = sessionsRes
+          employeePayload = employeesRes
+        } else {
+          const [sessionsRes, employeesRes] = await Promise.all([
+            api.sessions(),
+            api.employees(),
+          ])
+          if (cancelled) return
+          sessionPayload = sessionsRes
+          employeePayload = employeesRes
+          savedProject = null
+        }
         setEmployees(employeePayload.employees)
-        const savedProject = projectId == null
-          ? null
-          : projectPayload.projects.find((item) => item.id === projectId) ?? null
         setProject(savedProject)
 
         let nextName = ''
@@ -127,10 +142,16 @@ export function WorkspaceProvider({ children }: { children?: ReactNode }) {
           related = match.project_id == null
             ? [match]
             : sessionPayload.sessions.filter((item) => item.project_id === match.project_id)
-          const linkedProject = match.project_id == null
-            ? null
-            : projectPayload.projects.find((item) => item.id === match.project_id) ?? null
-          setProject(linkedProject)
+          if (match.project_id != null) {
+            try {
+              savedProject = await api.getProject(match.project_id)
+              const matchEmps = await api.employees(match.project_id)
+              if (!cancelled) setEmployees(matchEmps.employees)
+            } catch {
+              savedProject = null
+            }
+          }
+          setProject(savedProject)
           nextName = match.name
         } else if (projectId != null) {
           related = sessionPayload.sessions.filter((item) => item.project_id === projectId)
@@ -238,16 +259,18 @@ export function WorkspaceProvider({ children }: { children?: ReactNode }) {
 
   async function refreshSession() {
     if (!sessionName) return
-    const [overviewPayload, taskPayload, schedulePayload, reportPayload] = await Promise.all([
+    const [overviewPayload, taskPayload, schedulePayload, reportPayload, employeesPayload] = await Promise.all([
       api.overview(sessionName),
       api.tasks(sessionName),
       api.schedule(sessionName),
       api.report(sessionName),
+      api.employees(projectId ?? undefined),
     ])
     setOverview(overviewPayload)
     setTasks(taskPayload.tasks)
     setSchedule(schedulePayload.scheduled_tasks ?? [])
     setReport(reportPayload)
+    setEmployees(employeesPayload.employees)
   }
 
   async function startPlan(event: FormEvent) {
@@ -357,6 +380,35 @@ export function WorkspaceProvider({ children }: { children?: ReactNode }) {
     }
   }
 
+  async function addCollaborator(employeeId: string, reason = 'Collaborator added') {
+    if (!sessionName || !selectedTask || !employeeId) return
+    setActionError('')
+    try {
+      await api.addCollaborator(sessionName, selectedTask.task_id, {
+        employee_id: employeeId,
+        reason,
+      })
+      await refreshSession()
+      toast({ title: 'Collaborator added', tone: 'success' })
+    } catch (err) {
+      setActionError(errorMessage(err, 'Could not add collaborator'))
+      throw err
+    }
+  }
+
+  async function removeCollaborator(employeeId: string) {
+    if (!sessionName || !selectedTask || !employeeId) return
+    setActionError('')
+    try {
+      await api.removeCollaborator(sessionName, selectedTask.task_id, employeeId)
+      await refreshSession()
+      toast({ title: 'Collaborator removed', tone: 'success' })
+    } catch (err) {
+      setActionError(errorMessage(err, 'Could not remove collaborator'))
+      throw err
+    }
+  }
+
   const onAssistant = location.pathname.endsWith('/assistant')
   const value = {
     projectId,
@@ -406,6 +458,10 @@ export function WorkspaceProvider({ children }: { children?: ReactNode }) {
     saveDelay,
     runDelayAnalysis,
     saveReassign,
+    addCollaborator,
+    removeCollaborator,
+    actionError,
+    setActionError,
   }
 
   return (
