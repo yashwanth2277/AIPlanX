@@ -88,6 +88,48 @@ def test_assistant_uses_mocked_model(tmp_path):
     mocked.assert_called_once()
 
 
+def test_assistant_passes_history_and_handles_rate_limit(tmp_path):
+    client, _ = make_client(tmp_path)
+    sessions = client.get("/api/sessions").json()["sessions"]
+    session_name = sessions[0]["name"]
+
+    with patch(
+        "api.main.ask_project_assistant",
+        return_value="Follow up answer.",
+    ) as mocked:
+        response = client.post(
+            "/api/assistant/ask",
+            json={
+                "question": "What about task 2?",
+                "session_name": session_name,
+                "history": [
+                    {"role": "user", "text": "What is task 1?"},
+                    {"role": "bot", "text": "Task 1 is in progress."},
+                ],
+            },
+        )
+    assert response.status_code == 200
+    assert response.json()["answer"] == "Follow up answer."
+    mocked.assert_called_once()
+    _, kwargs = mocked.call_args
+    assert len(kwargs.get("history", [])) == 2
+
+    # Verify 503 on rate limit error
+    with patch(
+        "api.main.ask_project_assistant",
+        side_effect=ValueError("The AI assistant request exceeded Groq token or rate limits."),
+    ):
+        error_resp = client.post(
+            "/api/assistant/ask",
+            json={
+                "question": "Summarize all tasks",
+                "session_name": session_name,
+            },
+        )
+    assert error_resp.status_code == 503
+    assert "Groq token or rate limits" in error_resp.json()["detail"]
+
+
 def test_planning_job_with_mocked_workflow(tmp_path):
     client, store = make_client(tmp_path)
     report = FinalProjectReport.model_validate_json(

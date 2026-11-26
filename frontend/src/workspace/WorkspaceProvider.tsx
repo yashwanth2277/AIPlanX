@@ -27,6 +27,41 @@ function latestSession(list: SessionSummary[]): SessionSummary | undefined {
   return [...list].sort((left, right) => timestamp(right.updated_at) - timestamp(left.updated_at))[0]
 }
 
+function getChatStorageKey(sessionName: string, projectId: number | null, scopeKey: string): string {
+  if (sessionName) return `aiplanx_chat_session_${sessionName}`
+  if (projectId != null) return `aiplanx_chat_project_${projectId}`
+  return `aiplanx_chat_${scopeKey}`
+}
+
+function loadStoredChat(key: string): ChatTurn[] {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      return parsed.filter(
+        (t): t is ChatTurn =>
+          t && (t.role === 'user' || t.role === 'bot') && typeof t.text === 'string'
+      )
+    }
+  } catch {
+    // ignore
+  }
+  return []
+}
+
+function saveStoredChat(key: string, chat: ChatTurn[]) {
+  try {
+    if (chat.length === 0) {
+      localStorage.removeItem(key)
+    } else {
+      localStorage.setItem(key, JSON.stringify(chat.slice(-50)))
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export function WorkspaceProvider({ children }: { children?: ReactNode }) {
   const params = useParams()
   const navigate = useNavigate()
@@ -55,10 +90,18 @@ export function WorkspaceProvider({ children }: { children?: ReactNode }) {
   const [planSessionName, setPlanSessionName] = useState('')
   const [planJob, setPlanJob] = useState<PlanJob | null>(null)
   const [planning, setPlanning] = useState(false)
-  const [chat, setChat] = useState<ChatTurn[]>([])
+  const currentChatKey = getChatStorageKey(sessionName, projectId, scopeKey)
+  const [activeChatKey, setActiveChatKey] = useState(() => getChatStorageKey('', projectId, scopeKey))
+  const [chat, setChat] = useState<ChatTurn[]>(() => loadStoredChat(getChatStorageKey('', projectId, scopeKey)))
   const [question, setQuestion] = useState('')
   const [asking, setAsking] = useState(false)
-  const [assistantOpen, setAssistantOpen] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(() => {
+    try {
+      return localStorage.getItem('aiplanx_assistant_open') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null)
   const [progressPercent, setProgressPercent] = useState(0)
   const [taskStatus, setTaskStatus] = useState('in_progress')
@@ -76,11 +119,41 @@ export function WorkspaceProvider({ children }: { children?: ReactNode }) {
     setPlanSessionName('')
     setPlanJob(null)
     setPlanning(false)
-    setChat([])
     setQuestion('')
     setActionError('')
     setSelectedTaskId(null)
   }
+
+  if (currentChatKey !== activeChatKey) {
+    setActiveChatKey(currentChatKey)
+    setChat(loadStoredChat(currentChatKey))
+  }
+
+  useEffect(() => {
+    if (activeChatKey) {
+      saveStoredChat(activeChatKey, chat)
+    }
+  }, [chat, activeChatKey])
+
+  const updateAssistantOpen = useCallback((open: boolean) => {
+    setAssistantOpen(open)
+    try {
+      localStorage.setItem('aiplanx_assistant_open', String(open))
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  const clearChat = useCallback(() => {
+    setChat([])
+    if (activeChatKey) {
+      try {
+        localStorage.removeItem(activeChatKey)
+      } catch {
+        // ignore
+      }
+    }
+  }, [activeChatKey])
 
   const clearSessionData = useCallback(() => {
     setSessionName('')
@@ -300,7 +373,7 @@ export function WorkspaceProvider({ children }: { children?: ReactNode }) {
     setChat((current) => [...current, { role: 'user', text }])
     setQuestion('')
     try {
-      const result = await api.askAssistant(sessionName, text)
+      const result = await api.askAssistant(sessionName, text, chat)
       setChat((current) => [...current, { role: 'bot', text: result.answer }])
     } catch (err) {
       const message = errorMessage(err, 'Assistant is unavailable')
@@ -440,7 +513,8 @@ export function WorkspaceProvider({ children }: { children?: ReactNode }) {
     setPlanDescription,
     setPlanSessionName,
     setQuestion,
-    setAssistantOpen,
+    setAssistantOpen: updateAssistantOpen,
+    clearChat,
     selectTask,
     setProgressPercent,
     setTaskStatus,

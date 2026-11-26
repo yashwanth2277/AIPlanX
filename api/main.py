@@ -480,9 +480,12 @@ def create_app(store=None) -> FastAPI:
                 body.question,
                 session_name=body.session_name,
                 context=context,
+                history=[m.model_dump() for m in body.history] if body.history else None,
             )
         except ValueError as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
+        except Exception as error:
+            raise HTTPException(status_code=503, detail=f"AI assistant error: {error}") from error
         return {"answer": answer}
 
     def _invoke_management(request: Request, name: str, payload: dict):

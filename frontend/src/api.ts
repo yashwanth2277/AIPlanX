@@ -348,10 +348,10 @@ export const api = {
     request(`/api/sessions/${name}/tasks/${taskId}/collaborators/${employeeId}`, {
       method: 'DELETE',
     }),
-  askAssistant: (sessionName: string, question: string) =>
+  askAssistant: (sessionName: string, question: string, history?: { role: string; text: string }[]) =>
     request<{ answer: string }>('/api/assistant/ask', {
       method: 'POST',
-      body: JSON.stringify({ session_name: sessionName, question }),
+      body: JSON.stringify({ session_name: sessionName, question, history }),
     }),
   startPlan: (description: string, sessionName?: string) =>
     request<{ job_id: string; status: string }>('/api/projects/plan', {

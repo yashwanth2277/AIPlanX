@@ -43,6 +43,7 @@ export type WorkspaceContextValue = {
   setPlanSessionName: (value: string) => void
   setQuestion: (value: string) => void
   setAssistantOpen: (open: boolean) => void
+  clearChat: () => void
   selectTask: (task: TaskRow) => void
   setProgressPercent: (value: number) => void
   setTaskStatus: (value: string) => void

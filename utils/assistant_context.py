@@ -63,7 +63,6 @@ def build_assistant_context_from_state(
             "summary": plan.project_summary,
             "total_estimated_hours": plan.total_estimated_hours,
             "risks": plan.risks,
-            "original_report": report.model_dump(mode="json"),
         },
         "tasks": tasks,
         "schedule": work_schedule.model_dump(mode="json"),

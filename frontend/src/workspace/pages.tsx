@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { ChevronDown, ChevronRight, Pencil, Trash2, UserPlus } from 'lucide-react'
+import { Bot, ChevronDown, ChevronRight, Pencil, Trash2, UserPlus } from 'lucide-react'
 import { api, type Overview, type TaskActivity, type TaskRow, type TeamMember } from '../api'
 import { Banner } from '../components/ui/Banner'
 import { Button } from '../components/ui/Button'
@@ -13,6 +13,8 @@ import { Select } from '../components/ui/Select'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { DataTable, Td, Th, Tr } from '../components/ui/Table'
 import { useToast } from '../components/ui/useToast'
+import { MarkdownRenderer } from '../components/ui/MarkdownRenderer'
+import { ChatInput } from '../components/ui/ChatInput'
 import { cn } from '../lib/cn'
 import { errorMessage, formatWhen } from '../lib/format'
 import { workspaceBase } from '../navigation'
@@ -1052,28 +1054,97 @@ export function ReportsPage() {
 const prompts = ['Summarize project status', 'Which tasks need attention?', 'Suggest next priorities']
 
 export function AssistantPage() {
-  const { sessionName, chat, question, asking, setQuestion, submitQuestion } = useWorkspace()
+  const { sessionName, chat, question, asking, setQuestion, submitQuestion, clearChat } = useWorkspace()
   if (!sessionName) return <NoSession detail="The assistant answers from a live session and does not change saved project state." />
   return (
     <Card className="ax-stack">
-      <p className="ax-hint">Answers use session {sessionName} and do not change saved project state.</p>
-      {chat.length === 0 && (
-        <div className="ax-suggest">
+      <div className="flex items-center justify-between">
+        <div>
+          <strong className="text-base font-semibold text-[var(--ax-ink)]">AI Project Assistant</strong>
+          <p className="ax-hint">Answers use session {sessionName} and do not change saved project state.</p>
+        </div>
+        {chat.length > 0 && (
+          <Button variant="ghost" onClick={clearChat} className="text-xs text-[var(--ax-muted)] hover:text-[var(--ax-danger)]">
+            Clear conversation
+          </Button>
+        )}
+      </div>
+
+      {chat.length === 0 ? (
+        <div className="ax-assistant-empty-state my-4">
+          <p className="text-xs text-[var(--ax-muted)] mb-2.5">Suggested questions to get started:</p>
+          <div className="flex flex-wrap gap-2">
+            {prompts.map((text) => (
+              <button
+                key={text}
+                type="button"
+                className="ax-suggest-btn"
+                onClick={() => setQuestion(text)}
+              >
+                <span>{text}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="ax-chat-messages-container my-2" style={{ maxHeight: '520px' }}>
+          {chat.map((turn, index) => (
+            <div
+              key={`${turn.role}-${index}`}
+              className={turn.role === 'user' ? 'ax-message-row-user' : 'ax-message-row-bot'}
+            >
+              {turn.role === 'bot' && (
+                <div className="ax-message-avatar">
+                  <Bot size={15} />
+                </div>
+              )}
+              <div className={turn.role === 'user' ? 'ax-message-bubble-user' : 'ax-message-bubble-bot'}>
+                {turn.role === 'bot' ? (
+                  <MarkdownRenderer content={turn.text} />
+                ) : (
+                  <div className="whitespace-pre-wrap text-xs leading-relaxed">{turn.text}</div>
+                )}
+              </div>
+            </div>
+          ))}
+          {asking && (
+            <div className="ax-message-row-bot">
+              <div className="ax-message-avatar animate-pulse">
+                <Bot size={15} />
+              </div>
+              <div className="ax-message-bubble-bot flex items-center gap-2 py-3 px-4">
+                <span className="ax-thinking-dot" />
+                <span className="text-xs text-[var(--ax-muted)] italic">Thinking with live project context…</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {chat.length > 0 && (
+        <div className="ax-quick-prompts-bar">
           {prompts.map((text) => (
-            <button key={text} type="button" onClick={() => setQuestion(text)}>{text}</button>
+            <button
+              key={text}
+              type="button"
+              className="ax-quick-chip"
+              onClick={() => setQuestion(text)}
+              disabled={asking}
+            >
+              {text}
+            </button>
           ))}
         </div>
       )}
-      <div className="ax-chat">
-        {chat.map((turn, index) => (
-          <p className={turn.role === 'user' ? 'ax-chat-user' : 'ax-chat-bot'} key={`${turn.role}-${index}`}>{turn.text}</p>
-        ))}
-        {asking && <p className="ax-chat-bot">Thinking with live project context…</p>}
-      </div>
-      <form className="ax-assistant-form" onSubmit={submitQuestion}>
-        <Input value={question} placeholder="Ask about this session" onChange={(event) => setQuestion(event.target.value)} />
-        <Button type="submit" disabled={asking || !question.trim()}>Send</Button>
-      </form>
+
+      <ChatInput
+        value={question}
+        onChange={setQuestion}
+        onSubmit={submitQuestion}
+        disabled={!sessionName}
+        loading={asking}
+        placeholder="Ask about this session…"
+      />
     </Card>
   )
 }

@@ -416,7 +416,7 @@ function EditTeamMemberForm({
   onClose: () => void
   onUpdated: (member: TeamMember) => void
 }) {
-  const [memberType, setMemberType] = useState<'employee' | 'intern'>(member.member_type || 'employee')
+  const [memberType, setMemberType] = useState<'employee' | 'intern'>(member.member_type === 'intern' ? 'intern' : 'employee')
   const [name, setName] = useState(member.name || '')
   const [role, setRole] = useState(member.role || '')
   const [skills, setSkills] = useState<string[]>(member.skills ? [...member.skills] : [])

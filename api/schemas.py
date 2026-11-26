@@ -85,9 +85,15 @@ class RemoveCollaboratorRequest(BaseModel):
     reason: str = Field(default="Collaborator removed", min_length=3, max_length=2000)
 
 
+class ChatMessage(BaseModel):
+    role: str = Field(default="user", max_length=32)
+    text: str = Field(default="", max_length=4000)
+
+
 class AssistantAskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=8000)
     session_name: str = Field(min_length=1, max_length=64)
+    history: list[ChatMessage] | None = None
 
 
 # --------------------------------------------------------------------------- #
